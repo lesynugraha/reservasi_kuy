@@ -1,1 +1,39 @@
-{"flutter":{"platforms":{"android":{"default":{"projectId":"reservationapp-cb1c7","appId":"1:121578279493:android:1774fa88dcf9b7869e092c","fileOutput":"android/app/google-services.json"}},"dart":{"lib/firebase_options.dart":{"projectId":"reservationapp-cb1c7","configurations":{"android":"1:121578279493:android:1774fa88dcf9b7869e092c","ios":"1:121578279493:ios:fc58b208e1671bbe9e092c"}}}}}}
+{
+  "flutter": {
+    "platforms": {
+      "android": {
+        "default": {
+          "projectId": "reservationapp-cb1c7",
+          "appId": "1:121578279493:android:1774fa88dcf9b7869e092c",
+          "fileOutput": "android/app/google-services.json"
+        }
+      },
+      "dart": {
+        "lib/firebase_options.dart": {
+          "projectId": "reservationapp-cb1c7",
+          "configurations": {
+            "android": "1:121578279493:android:1774fa88dcf9b7869e092c",
+            "ios": "1:121578279493:ios:fc58b208e1671bbe9e092c"
+          }
+        }
+      }
+    }
+  },
+  "functions": [
+    {
+      "source": "functions",
+      "codebase": "default",
+      "ignore": [
+        "node_modules",
+        ".git",
+        "firebase-debug.log",
+        "firebase-debug.*.log",
+        "*.local"
+      ],
+      "predeploy": [
+        "npm --prefix \"$RESOURCE_DIR\" run lint",
+        "npm --prefix \"$RESOURCE_DIR\" run build"
+      ]
+    }
+  ]
+}

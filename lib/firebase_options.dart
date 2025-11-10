@@ -65,4 +65,5 @@ class DefaultFirebaseOptions {
     storageBucket: 'reservationapp-cb1c7.appspot.com',
     iosBundleId: 'co.id.kenarok.reservationApp',
   );
+
 }
