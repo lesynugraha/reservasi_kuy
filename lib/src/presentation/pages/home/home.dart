@@ -61,6 +61,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         reservation.information!,
         status,
         reservation.image!,
+        note: reservation.note,
       ),
     );
   }
@@ -75,8 +76,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     };
   }
 
+  // vvv PERBAIKAN 1: Menambahkan parameter {String? note} vvv
   /// admin: membuat laporan custom id
-  createReportCustomId(ReservationModel reservation, String status, String id) {
+  createReportCustomId(ReservationModel reservation, String status, String id, {String? note}) {
     historyBloc = context.read<HistoryBloc>();
     historyBloc.add(
       CreateReportCustomId(
@@ -90,6 +92,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         reservation.information!,
         status,
         reservation.image!,
+        note: note, // <--- MENGIRIM NOTE KE BLOC
       ),
     );
   }
@@ -118,13 +121,17 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     reservationBloc.add(GetReservationForAdmin());
   }
 
+  // vvv PERBAIKAN 2: Mengirim note ke createReportCustomId vvv
   /// admin: menerima dan menolak reservasi serta membuat laporan
-  actionReservationAdmin(ReservationModel reservation, String status) {
-    return () {
-      reservationBloc = context.read<ReservationBloc>();
-      reservationBloc.add(UpdateStatusReservation(reservation.id!, status));
-      createReportCustomId(reservation, status, reservation.id!);
-    };
+  actionReservationAdmin(ReservationModel reservation, String status,
+      {String? note}) {
+    reservationBloc = context.read<ReservationBloc>();
+    // Update Status Reservasi (ini sudah benar)
+    reservationBloc.add(
+        UpdateStatusReservation(reservation.id!, status, note: note));
+
+    // Kirim juga ke Laporan/Report
+    createReportCustomId(reservation, status, reservation.id!, note: note);
   }
 
   /// super admin: delete akun supervisor
@@ -260,36 +267,36 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                     children: [
                       user.isNotEmpty
                           ? ListView.builder(
-                              padding: EdgeInsets.zero,
-                              itemCount: user.length,
-                              physics: const NeverScrollableScrollPhysics(),
-                              shrinkWrap: true,
-                              itemBuilder: (context, index) {
-                                return SupervisorCardView(
-                                  user: user[index],
-                                  editFunction: () {
-                                    context.pushNamed(
-                                      Routes().editUserSuperAdmin,
-                                      extra: user[index],
-                                    );
-                                  },
-                                  deleteFunction: () {
-                                    PopUp().whenDoSomething(
-                                      context,
-                                      "Yakin ingin menghapus instansi ${user[index].agency!}",
-                                      Icons.delete_forever,
-                                      deleteUserSupervisor(user[index].agency!),
-                                    );
-                                  },
-                                  detailFunction: () {
-                                    context.pushNamed(
-                                      Routes().detailUserSuperAdmin,
-                                      extra: user[index],
-                                    );
-                                  },
-                                );
-                              },
-                            )
+                        padding: EdgeInsets.zero,
+                        itemCount: user.length,
+                        physics: const NeverScrollableScrollPhysics(),
+                        shrinkWrap: true,
+                        itemBuilder: (context, index) {
+                          return SupervisorCardView(
+                            user: user[index],
+                            editFunction: () {
+                              context.pushNamed(
+                                Routes().editUserSuperAdmin,
+                                extra: user[index],
+                              );
+                            },
+                            deleteFunction: () {
+                              PopUp().whenDoSomething(
+                                context,
+                                "Yakin ingin menghapus instansi ${user[index].agency!}",
+                                Icons.delete_forever,
+                                deleteUserSupervisor(user[index].agency!),
+                              );
+                            },
+                            detailFunction: () {
+                              context.pushNamed(
+                                Routes().detailUserSuperAdmin,
+                                extra: user[index],
+                              );
+                            },
+                          );
+                        },
+                      )
                           : isEmptyText("Tidak ada akun supervisor"),
                       const Gap(30),
                       Align(
@@ -371,7 +378,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       .where((element) => element.status == "Menunggu")
                       .toList();
                   reservations.sort(
-                    (a, b) => a.dateCreated!.compareTo(b.dateCreated!),
+                        (a, b) => a.dateCreated!.compareTo(b.dateCreated!),
                   );
                   if (reservations.isNotEmpty) {
                     return ListView.builder(
@@ -387,17 +394,25 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               context,
                               "Setujui Reservasi?",
                               Icons.check,
-                              actionReservationAdmin(
-                                  reservations[index], "Disetujui"),
+                                  () {
+                                actionReservationAdmin(
+                                    reservations[index], "Disetujui");
+                              },
                             );
                           },
                           declineFunction: () {
-                            PopUp().whenDoSomething(
+                            PopUp().whenDoSomethingWithInput(
                               context,
                               "Tolak Reservasi?",
+                              "Alasan Penolakan",
                               Icons.cancel,
-                              actionReservationAdmin(
-                                  reservations[index], "Ditolak"),
+                                  (alasan) {
+                                actionReservationAdmin(
+                                  reservations[index],
+                                  "Ditolak",
+                                  note: alasan,
+                                );
+                              },
                             );
                           },
                           role: userRole,
@@ -456,7 +471,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                 if (state is ReservationGetSuccess) {
                   final reservations = state.reservations;
                   reservations.sort(
-                    (a, b) => b.dateCreated!.compareTo(a.dateCreated!),
+                        (a, b) => b.dateCreated!.compareTo(a.dateCreated!),
                   );
                   if (reservations.isNotEmpty) {
                     return ListView.builder(
@@ -577,7 +592,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               const Gap(10),
                               Row(
                                 mainAxisAlignment:
-                                    MainAxisAlignment.spaceBetween,
+                                MainAxisAlignment.spaceBetween,
                                 children: [
                                   Container(
                                     decoration: BoxDecoration(

@@ -12,14 +12,14 @@ class HistoryRepo {
     try {
       QuerySnapshot resultHistories = await Repositories()
           .db
-          .collection("histories")
+          .collection("histories") // pastikan nama koleksi benar
           .where("contactId", isEqualTo: contactId)
           .get();
 
       if (resultHistories.docs.isNotEmpty) {
         statusCode = "200";
         final List<HistoryModel> histories =
-            resultHistories.docs.map((e) => HistoryModel.fromJson(e)).toList();
+        resultHistories.docs.map((e) => HistoryModel.fromJson(e)).toList();
         return histories;
       } else {
         statusCode = "200";
@@ -33,18 +33,19 @@ class HistoryRepo {
 
   /// user: membuat riwayat reservasi
   createHistory(
-    String buildingName,
-    String dateStart,
-    String dateEnd,
-    String dateCreated,
-    String dateFinished,
-    String contactId,
-    String contactName,
-    String information,
-    String status,
-    String agency,
-    String image,
-  ) async {
+      String buildingName,
+      String dateStart,
+      String dateEnd,
+      String dateCreated,
+      String dateFinished,
+      String contactId,
+      String contactName,
+      String information,
+      String status,
+      String agency,
+      String image, {
+        String? note, // <--- DITAMBAHKAN
+      }) async {
     error = "";
     statusCode = "";
 
@@ -62,8 +63,9 @@ class HistoryRepo {
         "status": status,
         "agency": agency,
         "image": image,
+        "note": note ?? "", // <--- DISIMPAN
       }).then(
-        (value) {
+            (value) {
           Repositories()
               .db
               .collection("histories")
@@ -104,7 +106,7 @@ class HistoryRepo {
       if (resultHistory.docs.isNotEmpty) {
         statusCode = "200";
         final List<HistoryModel> reports =
-            resultHistory.docs.map((e) => HistoryModel.fromJson(e)).toList();
+        resultHistory.docs.map((e) => HistoryModel.fromJson(e)).toList();
         return reports;
       } else {
         statusCode = "200";
@@ -116,20 +118,21 @@ class HistoryRepo {
     }
   }
 
-  /// admin: membuat laporan reservasi
+  /// admin: membuat laporan reservasi (custom id)
   createReportCustomId(
-    String id,
-    String buildingName,
-    String dateStart,
-    String dateEnd,
-    String dateCreated,
-    String contactId,
-    String contactName,
-    String information,
-    String status,
-    String agency,
-    String image,
-  ) async {
+      String id,
+      String buildingName,
+      String dateStart,
+      String dateEnd,
+      String dateCreated,
+      String contactId,
+      String contactName,
+      String information,
+      String status,
+      String agency,
+      String image, {
+        String? note, // <--- DITAMBAHKAN
+      }) async {
     statusCode = "";
 
     try {
@@ -146,6 +149,7 @@ class HistoryRepo {
         "status": status,
         "agency": agency,
         "image": image,
+        "note": note ?? "", // <--- DISIMPAN
       });
       statusCode = "200";
     } catch (e) {
@@ -154,17 +158,18 @@ class HistoryRepo {
   }
 
   createReport(
-    String buildingName,
-    String dateStart,
-    String dateEnd,
-    String dateCreated,
-    String contactId,
-    String contactName,
-    String information,
-    String status,
-    String agency,
-    String image,
-  ) async {
+      String buildingName,
+      String dateStart,
+      String dateEnd,
+      String dateCreated,
+      String contactId,
+      String contactName,
+      String information,
+      String status,
+      String agency,
+      String image, {
+        String? note, // <--- DITAMBAHKAN
+      }) async {
     error = "";
     statusCode = "";
 
@@ -182,8 +187,9 @@ class HistoryRepo {
         "status": status,
         "agency": agency,
         "image": image,
+        "note": note ?? "", // <--- DISIMPAN
       }).then(
-        (value) {
+            (value) {
           Repositories()
               .db
               .collection("reports")

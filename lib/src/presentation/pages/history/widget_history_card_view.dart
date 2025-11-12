@@ -101,9 +101,9 @@ class HistoryCardView extends StatelessWidget {
                         ),
                         role == "1"
                             ? TextContentCardView(
-                                name: "Pengguna",
-                                content: history.contactName!,
-                              )
+                          name: "Pengguna",
+                          content: history.contactName!,
+                        )
                             : const SizedBox(),
                         TextContentCardView(
                           name: "Mulai",
@@ -124,7 +124,7 @@ class HistoryCardView extends StatelessWidget {
                           name: "Diselesaikan",
                           content: history.dateFinished != ""
                               ? ParsingString()
-                                  .convertDateWithHour(history.dateFinished!)
+                              .convertDateWithHour(history.dateFinished!)
                               : "Belum Diselesaikan",
                         ),
                         const TextTitleDescriptionCardView(
@@ -133,6 +133,23 @@ class HistoryCardView extends StatelessWidget {
                         TextTitleDescriptionCardView(
                           text: history.information!,
                         ),
+
+                        // vvv MENAMPILKAN ALASAN PENOLAKAN (Jika Ada) vvv
+                        if (history.note != null && history.note!.isNotEmpty) ...[
+                          const Gap(5),
+                          const TextTitleDescriptionCardView(
+                            text: "Alasan Penolakan/Catatan",
+                          ),
+                          Text(
+                            history.note!,
+                            style: GoogleFonts.openSans(
+                              fontSize: 12,
+                              color: Colors.redAccent, // Merah agar terlihat jelas
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
+                        ],
+                        // ^^^ SAMPAI SINI ^^^
                       ],
                     ),
                   ),

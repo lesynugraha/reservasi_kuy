@@ -6,7 +6,6 @@ import '../../model/reservation_model.dart';
 import '../../repositories/repositories.dart';
 
 part 'reservation_event.dart';
-
 part 'reservation_state.dart';
 
 class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
@@ -88,7 +87,7 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
     try {
       final user = await _getUsername();
       final reservations =
-          await repositories.reservation.getReservationForUser(user);
+      await repositories.reservation.getReservationForUser(user);
       if (repositories.reservation.statusCode == "200") {
         emit(ReservationGetSuccess(reservations));
       } else {
@@ -106,7 +105,7 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
     try {
       final agency = await _getAgency();
       final reservations =
-          await repositories.reservation.getReservationForAdmin(agency);
+      await repositories.reservation.getReservationForAdmin(agency);
       if (repositories.reservation.statusCode == "200") {
         emit(ReservationGetSuccess(reservations));
       } else {
@@ -134,13 +133,19 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
     }
   }
 
-  /// terima reservasi bagi admin
+  /// terima/tolak reservasi bagi admin
   _updateStatusReservation(
       UpdateStatusReservation event, Emitter<ReservationState> emit) async {
     emit(ReservationLoading());
     try {
-      await repositories.reservation
-          .updateStatusReservation(event.id, event.status);
+      // vvv INI BAGIAN KRUSIAL YANG ANDA LEWATKAN SEBELUMNYA vvv
+      await repositories.reservation.updateStatusReservation(
+          event.id,
+          event.status,
+          note: event.note // <--- Pastikan baris ini ada!
+      );
+      // ^^^ SELESAI ^^^
+
       if (repositories.reservation.statusCode == "200") {
         emit(ReservationUpdateSuccess());
         add(GetReservationForAdmin());

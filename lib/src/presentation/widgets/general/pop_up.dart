@@ -3,15 +3,16 @@ import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+import 'button_positive.dart';
 import 'widget_custom_text_form_field.dart';
 
 class PopUp {
   whenDoSomething(
-    BuildContext context,
-    String text,
-    IconData icon,
-    Function function,
-  ) async {
+      BuildContext context,
+      String text,
+      IconData icon,
+      Function function,
+      ) async {
     return showDialog(
       context: context,
       barrierDismissible: false,
@@ -170,14 +171,14 @@ class PopUp {
   }
 
   whenEditField(
-    BuildContext context,
-    GlobalKey<FormState> key,
-    String fieldName,
-    TextEditingController controller,
-    TextEditingController tempController,
-    IconData prefixIcon,
-    Function function,
-  ) {
+      BuildContext context,
+      GlobalKey<FormState> key,
+      String fieldName,
+      TextEditingController controller,
+      TextEditingController tempController,
+      IconData prefixIcon,
+      Function function,
+      ) {
     tempController.text = controller.text;
     return showDialog(
       context: context,
@@ -261,6 +262,118 @@ class PopUp {
               ],
             ),
           ],
+        );
+      },
+    );
+  }
+
+  // vvv FUNGSI BARU: Pop-up dengan Input Text vvv
+  Future<void> whenDoSomethingWithInput(
+      BuildContext context,
+      String title,
+      String labelInput,
+      IconData icon,
+      ValueChanged<String> function,
+      ) {
+    final TextEditingController controller = TextEditingController();
+    final formKey = GlobalKey<FormState>();
+
+    return showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) {
+        return AlertDialog(
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(10),
+          ),
+          content: Form(
+            key: formKey,
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(
+                  icon,
+                  color: Colors.blueAccent,
+                  size: 50,
+                ),
+                const Gap(10),
+                Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: GoogleFonts.openSans(
+                    fontSize: 16,
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const Gap(20),
+                // Input Alasan
+                TextFormField(
+                  controller: controller,
+                  maxLines: 3,
+                  decoration: InputDecoration(
+                    labelText: labelInput,
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(10),
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 12,
+                      vertical: 12,
+                    ),
+                  ),
+                  validator: (value) {
+                    if (value == null || value.isEmpty) {
+                      return 'Wajib diisi';
+                    }
+                    return null;
+                  },
+                ),
+                const Gap(20),
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceAround,
+                  children: [
+                    // Tombol Batal
+                    Expanded(
+                      child: InkWell(
+                        onTap: () {
+                          context.pop();
+                        },
+                        borderRadius: BorderRadius.circular(100),
+                        child: Container(
+                          padding: const EdgeInsets.symmetric(vertical: 12),
+                          decoration: BoxDecoration(
+                            borderRadius: BorderRadius.circular(100),
+                            border: Border.all(color: Colors.grey),
+                          ),
+                          alignment: Alignment.center,
+                          child: Text(
+                            "Batal",
+                            style: GoogleFonts.openSans(
+                              fontWeight: FontWeight.bold,
+                              color: Colors.grey,
+                            ),
+                          ),
+                        ),
+                      ),
+                    ),
+                    const Gap(10),
+                    // Tombol Konfirmasi
+                    Expanded(
+                      // vvv SEKARANG INI AKAN BERHASIL KARENA IMPORT SUDAH ADA vvv
+                      child: ButtonPositive(
+                        name: "Konfirmasi",
+                        function: () {
+                          if (formKey.currentState!.validate()) {
+                            context.pop(); // Tutup dialog
+                            function(controller.text); // Panggil fungsi aksi
+                          }
+                        },
+                      ),
+                    ),
+                  ],
+                ),
+              ],
+            ),
+          ),
         );
       },
     );

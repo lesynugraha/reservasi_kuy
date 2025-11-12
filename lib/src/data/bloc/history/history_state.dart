@@ -38,7 +38,14 @@ class HistoryCreateFailed extends HistoryState {
   List<Object> get props => [];
 }
 
-class UpdateFinishedReportSuccess extends HistoryState {
+// vvv INI YANG HILANG DAN MENYEBABKAN ERROR vvv
+class HistoryUpdateSuccess extends HistoryState {
   @override
   List<Object> get props => [];
 }
+
+class HistoryUpdateFailed extends HistoryState {
+  @override
+  List<Object> get props => [];
+}
+// ^^^ SUDAH DITAMBAHKAN ^^^

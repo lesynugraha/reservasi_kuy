@@ -4,7 +4,7 @@ abstract class HistoryEvent extends Equatable {
   const HistoryEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class InitialHistory extends HistoryEvent {}
@@ -29,18 +29,20 @@ class CreateHistory extends HistoryEvent {
   final String information;
   final String status;
   final String image;
+  final String? note; // <--- SUDAH DITAMBAHKAN
 
   const CreateHistory(
-    this.buildingName,
-    this.dateStart,
-    this.dateEnd,
-    this.dateCreated,
-    this.contactId,
-    this.contactName,
-    this.information,
-    this.status,
-    this.image,
-  );
+      this.buildingName,
+      this.dateStart,
+      this.dateEnd,
+      this.dateCreated,
+      this.contactId,
+      this.contactName,
+      this.information,
+      this.status,
+      this.image,
+      {this.note} // <--- SUDAH DITAMBAHKAN
+      );
 }
 
 class CreateReport extends HistoryEvent {
@@ -53,6 +55,7 @@ class CreateReport extends HistoryEvent {
   final String information;
   final String status;
   final String image;
+  final String? note; // <--- SUDAH DITAMBAHKAN
 
   const CreateReport(
       this.buildingName,
@@ -64,6 +67,7 @@ class CreateReport extends HistoryEvent {
       this.information,
       this.status,
       this.image,
+      {this.note} // <--- SUDAH DITAMBAHKAN
       );
 }
 
@@ -78,6 +82,7 @@ class CreateReportCustomId extends HistoryEvent {
   final String information;
   final String status;
   final String image;
+  final String? note; // <--- SUDAH DITAMBAHKAN
 
   const CreateReportCustomId(
       this.id,
@@ -90,5 +95,6 @@ class CreateReportCustomId extends HistoryEvent {
       this.information,
       this.status,
       this.image,
+      {this.note} // <--- SUDAH DITAMBAHKAN
       );
 }

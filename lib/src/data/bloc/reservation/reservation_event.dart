@@ -4,7 +4,7 @@ abstract class ReservationEvent extends Equatable {
   const ReservationEvent();
 
   @override
-  List<Object> get props => [];
+  List<Object?> get props => [];
 }
 
 class InitialReservation extends ReservationEvent {}
@@ -18,11 +18,16 @@ class DeleteReservation extends ReservationEvent {
 class UpdateStatusReservation extends ReservationEvent {
   final String id;
   final String status;
+  final String? note;
 
   const UpdateStatusReservation(
-    this.id,
-    this.status,
-  );
+      this.id,
+      this.status,
+      {this.note}
+      );
+
+  @override
+  List<Object?> get props => [id, status, note];
 }
 
 class GetReservationCheck extends ReservationEvent {

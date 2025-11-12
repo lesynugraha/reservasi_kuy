@@ -6,18 +6,18 @@ class ReservationRepo {
 
   /// membuat reservasi
   createReservation(
-    String? buildingName,
-    String? contactId,
-    String? contactName,
-    String? contactEmail,
-    String? contactPhone,
-    String? dateStart,
-    String? dateEnd,
-    String? dateCreated,
-    String? information,
-    String? agency,
-    String? image,
-  ) async {
+      String? buildingName,
+      String? contactId,
+      String? contactName,
+      String? contactEmail,
+      String? contactPhone,
+      String? dateStart,
+      String? dateEnd,
+      String? dateCreated,
+      String? information,
+      String? agency,
+      String? image,
+      ) async {
     statusCode = "";
 
     try {
@@ -36,7 +36,7 @@ class ReservationRepo {
         "status": "Menunggu",
         "image": image,
       }).then(
-        (value) {
+            (value) {
           Repositories()
               .db
               .collection("reservations")
@@ -70,10 +70,10 @@ class ReservationRepo {
         final onReservation = reservations
             .where(
               (element) =>
-                  element.status == "Menunggu" ||
-                  element.status == "Disetujui" ||
-                  element.status == "Ditolak",
-            )
+          element.status == "Menunggu" ||
+              element.status == "Disetujui" ||
+              element.status == "Ditolak",
+        )
             .toList();
         return onReservation;
       } else {
@@ -126,32 +126,43 @@ class ReservationRepo {
     }
   }
 
-  /// menyetujui reservasi
-  updateStatusReservation(
-    String id,
-    String status,
-  ) async {
+  // vvv INI BAGIAN PENTING YANG SERING TERLEWAT vvv
+  /// menyetujui atau menolak reservasi (update status dan note)
+  updateStatusReservation(String id, String status, {String? note}) async {
     statusCode = "";
     try {
+      // Siapkan data update
+      Map<String, dynamic> dataToUpdate = {
+        "status": status,
+      };
+
+      // Cek apakah ada note, jika ada masukkan ke data update
+      if (note != null && note.isNotEmpty) {
+        dataToUpdate["note"] = note;
+      }
+
+      // Update ke Firestore
       await Repositories()
           .db
           .collection("reservations")
           .doc(id)
-          .update({"status": status});
+          .update(dataToUpdate);
+
       statusCode = "200";
       return null;
     } catch (e) {
       throw Exception(e);
     }
   }
+  // ^^^ SAMPAI SINI ^^^
 
   /// mendapatkan informasi dan pengecekan status tersedia reservasi
   getReservationAvail(
-    String dateStart,
-    String dateEnd,
-    String agency,
-    String buildingName,
-  ) async {
+      String dateStart,
+      String dateEnd,
+      String agency,
+      String buildingName,
+      ) async {
     statusCode = "";
     final List<ReservationModel> noBooking = [];
 
@@ -170,9 +181,6 @@ class ReservationRepo {
         final List<ReservationModel> reservationBookedByDate =
         listReservation.where(
               (element) {
-            // (enteredStart >= data.start && enteredStart <= data.end) ||
-            // (enteredEnd >= data.start && enteredEnd <= data.end) ||
-            // (data.start >= enteredStart && data.start <= enteredEnd);
             if (element.status != "Disetujui") {
               return false;
             }
@@ -234,8 +242,8 @@ class ReservationRepo {
         final onReservation = reservations
             .where(
               (element) =>
-                  element.status == "Menunggu" || element.status == "Disetujui",
-            )
+          element.status == "Menunggu" || element.status == "Disetujui",
+        )
             .toList();
         return onReservation;
       } else {

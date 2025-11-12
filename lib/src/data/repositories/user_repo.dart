@@ -27,6 +27,41 @@ class UserRepo {
     }
   }
 
+  /// Menyimpan FCM Token ke dokumen user
+  Future<void> updateUserFCMToken(String username, String token) async {
+    try {
+      // 1. Cari dokumen user berdasarkan 'username'
+      QuerySnapshot querySnapshot = await Repositories()
+          .db
+          .collection("users")
+          .where('username', isEqualTo: username)
+          .limit(1)
+          .get();
+
+      if (querySnapshot.docs.isNotEmpty) {
+        // 2. Jika user ditemukan, dapatkan ID dokumennya
+        String docId = querySnapshot.docs.first.id;
+
+        // 3. Update dokumen tersebut dengan fcmToken baru
+        await Repositories().db.collection("users").doc(docId).update({
+          // field yang akan dibaca oleh Cloud Function
+          'fcmToken': token,
+        });
+        if (kDebugMode) {
+          print("FCM Token berhasil disimpan untuk $username");
+        }
+      } else {
+        if (kDebugMode) {
+          print("User $username tidak ditemukan untuk update token.");
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("Error saat update FCM token: $e");
+      }
+    }
+  }
+
   /// tambah user
   register(
     String agency,
