@@ -5,7 +5,10 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:reservation_app/src/data/model/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import 'package:flutter/foundation.dart';
 
+import '../../../data/repositories/repositories.dart';
+import '../../../data/utils/notification_services.dart';
 import '../../../data/bloc/history/history_bloc.dart';
 import '../../../data/bloc/register/register_bloc.dart';
 import '../../../data/bloc/reservation/reservation_bloc.dart';
@@ -162,6 +165,29 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     date = dateTime.toString();
   }
 
+  // Fungsi Update Token Otomatis (Versi Revisi)
+  _updateFCMToken() async {
+    try {
+      SharedPreferences prefs = await SharedPreferences.getInstance();
+      String? username = prefs.getString("user");
+
+      if (username != null) {
+        String? token = await NotificationServices().getDeviceToken();
+        if (token != null) {
+          await UserRepo().updateUserFCMToken(username, token);
+          // Gunakan kDebugMode agar 'hint' hilang
+          if (kDebugMode) {
+            print("✅ Token diperbarui otomatis di Home untuk: $username");
+          }
+        }
+      }
+    } catch (e) {
+      if (kDebugMode) {
+        print("❌ Error auto-update token: $e");
+      }
+    }
+  }
+
   /// umum: informasi role
   getRole() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -178,6 +204,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     getDateTime();
     getUser();
     getAllUserSuperAdmin();
+    _updateFCMToken();
 
     super.didChangeDependencies();
   }

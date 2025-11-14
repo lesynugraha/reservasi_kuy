@@ -1,3 +1,6 @@
+import '../../../data/repositories/repositories.dart'; // Untuk akses UserRepo
+import '../../../data/utils/notification_services.dart'; // Untuk akses token FCM
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
@@ -50,7 +53,32 @@ class _LoginPageState extends State<LoginPage> {
   @override
   Widget build(BuildContext context) {
     return BlocListener<AuthenticationBloc, AuthenticationState>(
-      listener: (context, state) {
+      listener: (context, state) async {
+        // === LOGIKA UPDATE TOKEN ===
+        if (state is IsSuperAdmin || state is IsAdmin || state is IsUser) {
+          try {
+            final token = await NotificationServices().getDeviceToken();
+            final username = usernameController.text;
+
+            if (token != null && username.isNotEmpty) {
+              await UserRepo().updateUserFCMToken(username, token);
+              if (kDebugMode) {
+                print("✅ FCM Token berhasil di-update untuk: $username");
+              }
+            }
+          } catch (e) {
+            if (kDebugMode) {
+              print("❌ Gagal update token saat login: $e");
+            }
+          }
+        }
+        // ===========================
+
+        // [PENTING] Cek apakah halaman masih ada sebelum pindah
+        // Ini menghilangkan warning 'use_build_context_synchronously'
+        if (!context.mounted) return;
+
+        // === LOGIKA NAVIGASI ===
         if (state is IsSuperAdmin) {
           context.goNamed(Routes().homeSuperAdmin);
         } else if (state is IsAdmin) {
