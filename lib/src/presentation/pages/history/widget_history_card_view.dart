@@ -8,6 +8,7 @@ import '../../utils/constant/constant.dart';
 import '../../utils/general/parsing.dart';
 import '../../widgets/general/widget_text_content_reservation.dart';
 import '../../widgets/general/widget_title_desc_card_view.dart';
+import '../../widgets/general/dialog_proof_view.dart'; // <--- Import Dialog
 
 class HistoryCardView extends StatelessWidget {
   const HistoryCardView({
@@ -134,8 +135,28 @@ class HistoryCardView extends StatelessWidget {
                           text: history.information!,
                         ),
 
-                        // vvv MENAMPILKAN ALASAN PENOLAKAN (Jika Ada) vvv
-                        if (history.note != null && history.note!.isNotEmpty) ...[
+                        // vvv TOMBOL LIHAT BUKTI vvv
+                        if (history.proofImage != null &&
+                            history.proofImage!.isNotEmpty) ...[
+                          const Gap(5),
+                          InkWell(
+                            onTap: () => DialogProofView.show(
+                                context, history.proofImage!),
+                            child: const Text(
+                              "Lihat Bukti Upload",
+                              style: TextStyle(
+                                color: Colors.blue,
+                                decoration: TextDecoration.underline,
+                                fontStyle: FontStyle.italic,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                          ),
+                        ],
+                        // ^^^ SAMPAI SINI ^^^
+
+                        if (history.note != null &&
+                            history.note!.isNotEmpty) ...[
                           const Gap(5),
                           const TextTitleDescriptionCardView(
                             text: "Alasan Penolakan/Catatan",
@@ -144,12 +165,11 @@ class HistoryCardView extends StatelessWidget {
                             history.note!,
                             style: GoogleFonts.openSans(
                               fontSize: 12,
-                              color: Colors.redAccent, // Merah agar terlihat jelas
+                              color: Colors.redAccent,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
-                        // ^^^ SAMPAI SINI ^^^
                       ],
                     ),
                   ),

@@ -14,6 +14,7 @@ class HistoryModel {
   String? image;
   String? agency;
   String? note;
+  String? proofImage;
 
   HistoryModel({
     this.id,
@@ -29,6 +30,7 @@ class HistoryModel {
     this.image,
     this.agency,
     this.note,
+    this.proofImage,
   });
 
   // vvv TEKNIK ANTI-CRASH (SAFE PARSING) vvv
@@ -51,6 +53,7 @@ class HistoryModel {
         agency: data['agency'],
         // Kalau field note tidak ada, isi dengan "" (jangan crash)
         note: data['note'] ?? "",
+        proofImage: data['proofImage'] ?? "",
       );
     }
     // Jika input adalah Map biasa
@@ -69,7 +72,8 @@ class HistoryModel {
         status: data['status'],
         image: data['image'],
         agency: data['agency'],
-        note: data['note'] ?? "", // Aman
+        note: data['note'] ?? "",
+        proofImage: data['proofImage'] ?? "", // Aman
       );
     }
   }
@@ -89,6 +93,7 @@ class HistoryModel {
     map['image'] = image;
     map['agency'] = agency;
     map['note'] = note;
+    map['proofImage'] = proofImage;
     return map;
   }
 }

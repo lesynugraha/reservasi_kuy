@@ -7,6 +7,7 @@ import '../../utils/constant/constant.dart';
 import '../../utils/general/parsing.dart';
 import '../../widgets/general/widget_title_desc_card_view.dart';
 import '../../widgets/general/widget_text_content_reservation.dart';
+import '../../widgets/general/dialog_proof_view.dart'; // <--- Import Dialog
 import 'widget_button_action.dart';
 
 class ReservationCardView extends StatelessWidget {
@@ -110,19 +111,19 @@ class ReservationCardView extends StatelessWidget {
                         ),
                         role == "1"
                             ? TextContentCardView(
-                                name: "Pengguna",
-                                content: reservation.contactName!,
-                              )
+                          name: "Pengguna",
+                          content: reservation.contactName!,
+                        )
                             : const SizedBox(),
                         TextContentCardView(
                           name: "Mulai",
-                          content:
-                              ParsingString().convertDateWithHour(reservation.dateStart!),
+                          content: ParsingString()
+                              .convertDateWithHour(reservation.dateStart!),
                         ),
                         TextContentCardView(
                           name: "Selesai",
-                          content:
-                              ParsingString().convertDateWithHour(reservation.dateEnd!),
+                          content: ParsingString()
+                              .convertDateWithHour(reservation.dateEnd!),
                         ),
                         TextContentCardView(
                           name: "Status",
@@ -134,6 +135,44 @@ class ReservationCardView extends StatelessWidget {
                         TextTitleDescriptionCardView(
                           text: reservation.information!,
                         ),
+
+                        // vvv TOMBOL LIHAT BUKTI (Hanya jika ada buktinya) vvv
+                        if (reservation.proofImage != null &&
+                            reservation.proofImage!.isNotEmpty) ...[
+                          const Gap(8),
+                          InkWell(
+                            onTap: () {
+                              DialogProofView.show(
+                                  context, reservation.proofImage!);
+                            },
+                            child: Container(
+                              padding: const EdgeInsets.symmetric(
+                                  vertical: 6, horizontal: 10),
+                              decoration: BoxDecoration(
+                                color: Colors.blue.shade50,
+                                borderRadius: BorderRadius.circular(6),
+                                border: Border.all(color: Colors.blue),
+                              ),
+                              child: const Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(Icons.visibility,
+                                      size: 16, color: Colors.blue),
+                                  Gap(5),
+                                  Text(
+                                    "Lihat Bukti Pengajuan",
+                                    style: TextStyle(
+                                        fontSize: 12,
+                                        color: Colors.blue,
+                                        fontWeight: FontWeight.bold),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ),
+                        ],
+                        // ^^^ SAMPAI SINI ^^^
+
                         const Gap(10),
                       ],
                     ),

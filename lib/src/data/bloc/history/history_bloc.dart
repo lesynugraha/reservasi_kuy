@@ -2,7 +2,6 @@ import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-// Pastikan import ini ada agar HistoryModel dikenali di state
 import '../../model/history_model.dart';
 import '../../repositories/repositories.dart';
 
@@ -60,7 +59,8 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
         event.status,
         agency,
         event.image,
-        note: event.note, // <--- MENGIRIM NOTE
+        note: event.note,
+        proofImage: event.proofImage, // <--- PASSING DATA
       );
       if (repositories.history.statusCode == "200") {
         emit(HistoryCreateSuccess());
@@ -80,10 +80,10 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
     try {
       await repositories.history.updateFinishedReport(event.id);
       if (repositories.history.statusCode == "200") {
-        emit(HistoryUpdateSuccess()); // <--- SEKARANG CLASS INI SUDAH ADA
+        emit(HistoryUpdateSuccess());
         add(GetHistoryUser());
       } else {
-        emit(HistoryUpdateFailed()); // <--- CLASS INI JUGA
+        emit(HistoryUpdateFailed());
       }
     } catch (e) {
       throw Exception(e);
@@ -106,7 +106,8 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
         event.status,
         agency,
         event.image,
-        note: event.note, // <--- MENGIRIM NOTE
+        note: event.note,
+        proofImage: event.proofImage, // <--- PASSING DATA
       );
       if (repositories.history.statusCode == "200") {
         emit(HistoryCreateSuccess());
@@ -120,7 +121,8 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
   }
 
   /// admin: membuat laporan custom id
-  _createReportCustomId(CreateReportCustomId event, Emitter<HistoryState> emit) async {
+  _createReportCustomId(
+      CreateReportCustomId event, Emitter<HistoryState> emit) async {
     emit(HistoryLoading());
     try {
       final agency = await _getAgency();
@@ -136,7 +138,8 @@ class HistoryBloc extends Bloc<HistoryEvent, HistoryState> {
         event.status,
         agency,
         event.image,
-        note: event.note, // <--- MENGIRIM NOTE
+        note: event.note,
+        proofImage: event.proofImage, // <--- PASSING DATA
       );
       if (repositories.history.statusCode == "200") {
         emit(HistoryCreateSuccess());

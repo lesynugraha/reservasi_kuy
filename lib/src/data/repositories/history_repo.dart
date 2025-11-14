@@ -12,7 +12,7 @@ class HistoryRepo {
     try {
       QuerySnapshot resultHistories = await Repositories()
           .db
-          .collection("histories") // pastikan nama koleksi benar
+          .collection("histories")
           .where("contactId", isEqualTo: contactId)
           .get();
 
@@ -44,7 +44,8 @@ class HistoryRepo {
       String status,
       String agency,
       String image, {
-        String? note, // <--- DITAMBAHKAN
+        String? note,
+        String? proofImage, // <--- [BARU] Terima Proof Image
       }) async {
     error = "";
     statusCode = "";
@@ -63,7 +64,8 @@ class HistoryRepo {
         "status": status,
         "agency": agency,
         "image": image,
-        "note": note ?? "", // <--- DISIMPAN
+        "note": note ?? "",
+        "proofImage": proofImage ?? "", // <--- [BARU] Simpan ke Firestore
       }).then(
             (value) {
           Repositories()
@@ -131,7 +133,8 @@ class HistoryRepo {
       String status,
       String agency,
       String image, {
-        String? note, // <--- DITAMBAHKAN
+        String? note,
+        String? proofImage, // <--- [BARU] Terima Proof Image
       }) async {
     statusCode = "";
 
@@ -149,7 +152,8 @@ class HistoryRepo {
         "status": status,
         "agency": agency,
         "image": image,
-        "note": note ?? "", // <--- DISIMPAN
+        "note": note ?? "",
+        "proofImage": proofImage ?? "", // <--- [BARU] Simpan ke Firestore
       });
       statusCode = "200";
     } catch (e) {
@@ -168,7 +172,8 @@ class HistoryRepo {
       String status,
       String agency,
       String image, {
-        String? note, // <--- DITAMBAHKAN
+        String? note,
+        String? proofImage, // <--- [BARU] Terima Proof Image
       }) async {
     error = "";
     statusCode = "";
@@ -187,7 +192,8 @@ class HistoryRepo {
         "status": status,
         "agency": agency,
         "image": image,
-        "note": note ?? "", // <--- DISIMPAN
+        "note": note ?? "",
+        "proofImage": proofImage ?? "", // <--- [BARU] Simpan ke Firestore
       }).then(
             (value) {
           Repositories()

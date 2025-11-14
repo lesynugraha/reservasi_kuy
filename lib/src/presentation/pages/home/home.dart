@@ -62,6 +62,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         status,
         reservation.image!,
         note: reservation.note,
+        proofImage: reservation.proofImage,
       ),
     );
   }
@@ -93,6 +94,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         status,
         reservation.image!,
         note: note, // <--- MENGIRIM NOTE KE BLOC
+        proofImage: reservation.proofImage,
       ),
     );
   }

@@ -29,7 +29,8 @@ class CreateHistory extends HistoryEvent {
   final String information;
   final String status;
   final String image;
-  final String? note; // <--- SUDAH DITAMBAHKAN
+  final String? note;
+  final String? proofImage; // <--- [BARU]
 
   const CreateHistory(
       this.buildingName,
@@ -40,9 +41,10 @@ class CreateHistory extends HistoryEvent {
       this.contactName,
       this.information,
       this.status,
-      this.image,
-      {this.note} // <--- SUDAH DITAMBAHKAN
-      );
+      this.image, {
+        this.note,
+        this.proofImage, // <--- [BARU]
+      });
 }
 
 class CreateReport extends HistoryEvent {
@@ -55,7 +57,8 @@ class CreateReport extends HistoryEvent {
   final String information;
   final String status;
   final String image;
-  final String? note; // <--- SUDAH DITAMBAHKAN
+  final String? note;
+  final String? proofImage; // <--- [BARU]
 
   const CreateReport(
       this.buildingName,
@@ -66,9 +69,10 @@ class CreateReport extends HistoryEvent {
       this.contactName,
       this.information,
       this.status,
-      this.image,
-      {this.note} // <--- SUDAH DITAMBAHKAN
-      );
+      this.image, {
+        this.note,
+        this.proofImage, // <--- [BARU]
+      });
 }
 
 class CreateReportCustomId extends HistoryEvent {
@@ -82,7 +86,8 @@ class CreateReportCustomId extends HistoryEvent {
   final String information;
   final String status;
   final String image;
-  final String? note; // <--- SUDAH DITAMBAHKAN
+  final String? note;
+  final String? proofImage; // <--- [BARU]
 
   const CreateReportCustomId(
       this.id,
@@ -94,7 +99,8 @@ class CreateReportCustomId extends HistoryEvent {
       this.contactName,
       this.information,
       this.status,
-      this.image,
-      {this.note} // <--- SUDAH DITAMBAHKAN
-      );
+      this.image, {
+        this.note,
+        this.proofImage, // <--- [BARU]
+      });
 }
