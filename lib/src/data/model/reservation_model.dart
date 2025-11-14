@@ -15,6 +15,7 @@ class ReservationModel {
   String? status;
   String? image;
   String? note;
+  String? proofImage; // <--- 1. FIELD BARU
 
   ReservationModel({
     this.id,
@@ -31,9 +32,9 @@ class ReservationModel {
     this.status,
     this.image,
     this.note,
+    this.proofImage, // <--- 2. MASUKKAN KONSTRUKTOR
   });
 
-  // vvv TEKNIK ANTI-CRASH (SAFE PARSING) vvv
   factory ReservationModel.fromJson(dynamic json) {
     if (json is DocumentSnapshot) {
       final data = json.data() as Map<String, dynamic>? ?? {};
@@ -51,8 +52,8 @@ class ReservationModel {
         agency: data['agency'],
         status: data['status'],
         image: data['image'],
-        // Kalau field note tidak ada, isi dengan "" (jangan crash)
         note: data['note'] ?? "",
+        proofImage: data['proofImage'] ?? "", // <--- 3. AMBIL DARI JSON
       );
     } else {
       final data = json as Map<String, dynamic>;
@@ -71,6 +72,7 @@ class ReservationModel {
         status: data['status'],
         image: data['image'],
         note: data['note'] ?? "",
+        proofImage: data['proofImage'] ?? "", // <--- 3. AMBIL DARI JSON
       );
     }
   }
@@ -91,6 +93,7 @@ class ReservationModel {
     map['status'] = status;
     map['image'] = image;
     map['note'] = note;
+    map['proofImage'] = proofImage; // <--- 4. SIMPAN KE JSON
     return map;
   }
 }

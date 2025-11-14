@@ -1,6 +1,8 @@
+import 'dart:typed_data';
 import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:shared_preferences/shared_preferences.dart';
+import '../../../presentation/utils/general/image_picker.dart';
 
 import '../../model/reservation_model.dart';
 import '../../repositories/repositories.dart';
@@ -28,10 +30,24 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
   }
 
   /// membuat reservasi
+  /// membuat reservasi (Updated dengan Upload Bukti)
   _createReservation(
       CreateReservation event, Emitter<ReservationState> emit) async {
     emit(ReservationLoading());
     try {
+      String proofImageUrl = "";
+
+      // 1. Cek apakah User melampirkan bukti
+      if (event.fileProof != null) {
+        // Nama file unik berdasarkan waktu
+        String fileName = "proof_${DateTime.now().millisecondsSinceEpoch}";
+
+        // Upload ke Firebase Storage (folder: reservation_proofs)
+        proofImageUrl = await StoreData().uploadImageToStorage(
+            "reservation_proofs", fileName, event.fileProof!);
+      }
+
+      // 2. Panggil Repo dengan URL bukti (kosong jika tidak upload)
       await repositories.reservation.createReservation(
         event.buildingName,
         event.contactId,
@@ -44,7 +60,9 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
         event.information,
         event.agency,
         event.image,
+        proofImageUrl, // <--- PASSING URL KE REPO
       );
+
       if (repositories.reservation.statusCode == "200") {
         emit(ReservationCreateSuccess());
         add(GetReservationForUser());
@@ -52,6 +70,8 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
         emit(ReservationCreateFailed());
       }
     } catch (e) {
+      // Sangat disarankan handle error state agar loading berhenti
+      emit(ReservationCreateFailed());
       throw Exception(e);
     }
   }

@@ -13,6 +13,9 @@ class DeleteReservation extends ReservationEvent {
   final String id;
 
   const DeleteReservation(this.id);
+
+  @override
+  List<Object?> get props => [id];
 }
 
 class UpdateStatusReservation extends ReservationEvent {
@@ -36,6 +39,9 @@ class GetReservationCheck extends ReservationEvent {
   final String buildingName;
 
   const GetReservationCheck(this.dateStart, this.dateEnd, this.buildingName);
+
+  @override
+  List<Object?> get props => [dateStart, dateEnd, buildingName];
 }
 
 class CreateReservation extends ReservationEvent {
@@ -49,20 +55,37 @@ class CreateReservation extends ReservationEvent {
   final String information;
   final String agency;
   final String image;
-
+  final Uint8List? fileProof; // Data gambar bukti
 
   const CreateReservation(
-    this.buildingName,
-    this.contactId,
-    this.contactName,
-    this.contactEmail,
-    this.contactPhone,
-    this.dateStart,
-    this.dateEnd,
-    this.information,
-    this.agency,
-    this.image,
-  );
+      this.buildingName,
+      this.contactId,
+      this.contactName,
+      this.contactEmail,
+      this.contactPhone,
+      this.dateStart,
+      this.dateEnd,
+      this.information,
+      this.agency,
+      this.image,
+      this.fileProof,
+      );
+
+  @override
+  List<Object?> get props => [
+    buildingName,
+    contactId,
+    contactName,
+    contactEmail,
+    contactPhone,
+    dateStart,
+    dateEnd,
+    information,
+    agency,
+    image,
+    // fileProof tidak perlu dimasukkan ke props untuk performa,
+    // karena datanya besar (byte array) dan jarang dibandingkan secara equality.
+  ];
 }
 
 class GetReservationForUser extends ReservationEvent {}

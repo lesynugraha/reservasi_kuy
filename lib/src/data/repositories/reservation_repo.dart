@@ -5,6 +5,7 @@ class ReservationRepo {
   late String statusCode;
 
   /// membuat reservasi
+  /// Update parameter function createReservation
   createReservation(
       String? buildingName,
       String? contactId,
@@ -17,6 +18,7 @@ class ReservationRepo {
       String? information,
       String? agency,
       String? image,
+      String? proofImage, // <--- TAMBAHAN PARAMETER
       ) async {
     statusCode = "";
 
@@ -35,6 +37,7 @@ class ReservationRepo {
         "agency": agency,
         "status": "Menunggu",
         "image": image,
+        "proofImage": proofImage, // <--- SIMPAN KE FIRESTORE
       }).then(
             (value) {
           Repositories()

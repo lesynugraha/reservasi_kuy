@@ -1,8 +1,11 @@
+import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
 import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 
+import '../../utils/general/image_picker.dart';
 import '../../../data/bloc/reservation/reservation_bloc.dart';
 import '../../../data/bloc/reservation_building/reservation_building_bloc.dart';
 import '../../../data/bloc/user/user_bloc.dart';
@@ -39,10 +42,24 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
   late UserBloc _userBloc;
   late UserModel user;
 
+  // [BARU] Variabel untuk menyimpan gambar bukti
+  Uint8List? _imageProof;
+
   /// mendapatkan info user
   getUser() {
     _userBloc = context.read<UserBloc>();
     _userBloc.add(GetUserLoggedIn());
+  }
+
+  // [BARU] Fungsi untuk mengambil gambar dari galeri
+  Future<void> _pickProofImage() async {
+    // Menggunakan StoreData helper yang sudah ada di project kamu
+    Uint8List? file = await StoreData().pickImage(ImageSource.gallery);
+    if (file != null) {
+      setState(() {
+        _imageProof = file;
+      });
+    }
   }
 
   /// membuat reservasi
@@ -61,6 +78,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
           informationController.text,
           user.agency!,
           widget.building.image!,
+          _imageProof, // [BARU] Kirim file bukti ke Event BLoC
         ),
       );
     };
@@ -132,6 +150,11 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
               BlocProvider.of<ReservationBuildingBloc>(context).add(
                 InitialBuildingAvail(),
               );
+            } else if (state is ReservationCreateFailed) {
+              // [OPSIONAL] Tambahkan ini agar user tau jika gagal
+              ScaffoldMessenger.of(context).showSnackBar(
+                const SnackBar(content: Text("Gagal membuat reservasi")),
+              );
             }
           },
         ),
@@ -174,7 +197,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                                 TitleSubtitleDetailPage(
                                   title: "Kapasitas",
                                   subtitle:
-                                      "${widget.building.capacity!.toString()} Orang",
+                                  "${widget.building.capacity!.toString()} Orang",
                                 ),
                                 TitleSubtitleDetailPage(
                                   title: "Peraturan",
@@ -187,8 +210,65 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                                 TitleSubtitleDetailPage(
                                   title: "Tanggal Pakai",
                                   subtitle:
-                                      "${ParsingString().convertDate(widget.dateStart)} - ${ParsingString().convertDate(widget.dateEnd)}",
+                                  "${ParsingString().convertDate(widget.dateStart)} - ${ParsingString().convertDate(widget.dateEnd)}",
                                 ),
+
+                                // ==========================================
+                                // [BARU] UI Upload Bukti (MULAI DARI SINI)
+                                // ==========================================
+                                const Gap(15),
+                                const Padding(
+                                  padding: EdgeInsets.symmetric(horizontal: 0),
+                                  child: Text(
+                                    "Bukti Pengajuan (Opsional)",
+                                    style: TextStyle(
+                                      fontWeight: FontWeight.bold,
+                                      fontSize: 14, // Sesuaikan ukuran font
+                                    ),
+                                  ),
+                                ),
+                                const Gap(8),
+                                GestureDetector(
+                                  onTap: _pickProofImage,
+                                  child: Container(
+                                    height: 180,
+                                    width: double.infinity,
+                                    decoration: BoxDecoration(
+                                      color: Colors.grey[100],
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                          color: Colors.grey.shade400),
+                                    ),
+                                    child: _imageProof != null
+                                        ? ClipRRect(
+                                      borderRadius:
+                                      BorderRadius.circular(12),
+                                      child: Image.memory(
+                                        _imageProof!,
+                                        fit: BoxFit.cover,
+                                      ),
+                                    )
+                                        : const Column(
+                                      mainAxisAlignment:
+                                      MainAxisAlignment.center,
+                                      children: [
+                                        Icon(Icons.add_a_photo,
+                                            size: 40, color: Colors.grey),
+                                        Gap(8),
+                                        Text(
+                                          "Tap untuk upload dokumen",
+                                          style: TextStyle(
+                                              color: Colors.grey),
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                                const Gap(15),
+                                // ==========================================
+                                // [BARU] UI Upload Bukti (SELESAI DI SINI)
+                                // ==========================================
+
                                 CustomTextFormField(
                                   fieldName: "Keterangan",
                                   controller: informationController,
@@ -236,4 +316,3 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
     );
   }
 }
-
