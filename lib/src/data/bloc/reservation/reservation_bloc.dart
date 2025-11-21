@@ -23,31 +23,60 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
     on<DeleteReservation>(_deleteReservation);
   }
 
-  /// reservasi awalan
   _reservationInitial(
       InitialReservation event, Emitter<ReservationState> emit) {
     emit(ReservationInitial());
   }
 
-  /// membuat reservasi
-  /// membuat reservasi (Updated dengan Upload Bukti)
+  // --- LOGIC BARU REALTIME UNTUK USER ---
+  _getReservationForUser(
+      GetReservationForUser event, Emitter<ReservationState> emit) async {
+    emit(ReservationLoading());
+    try {
+      final user = await _getUsername();
+      // Menggunakan emit.forEach untuk Stream
+      await emit.forEach(
+        repositories.reservation.getReservationStreamForUser(user),
+        onData: (List<ReservationModel> data) {
+          return ReservationGetSuccess(data);
+        },
+        onError: (_, __) => ReservationGetFailed(),
+      );
+    } catch (e) {
+      emit(ReservationGetFailed());
+    }
+  }
+
+  // --- LOGIC BARU REALTIME UNTUK ADMIN ---
+  _getReservationForAccept(
+      GetReservationForAdmin event, Emitter<ReservationState> emit) async {
+    emit(ReservationLoading());
+    try {
+      final agency = await _getAgency();
+      // Menggunakan emit.forEach untuk Stream
+      await emit.forEach(
+        repositories.reservation.getReservationStreamForAdmin(agency),
+        onData: (List<ReservationModel> data) {
+          return ReservationGetSuccess(data);
+        },
+        onError: (_, __) => ReservationGetFailed(),
+      );
+    } catch (e) {
+      emit(ReservationGetFailed());
+    }
+  }
+
   _createReservation(
       CreateReservation event, Emitter<ReservationState> emit) async {
     emit(ReservationLoading());
     try {
       String proofImageUrl = "";
-
-      // 1. Cek apakah User melampirkan bukti
       if (event.fileProof != null) {
-        // Nama file unik berdasarkan waktu
         String fileName = "proof_${DateTime.now().millisecondsSinceEpoch}";
-
-        // Upload ke Firebase Storage (folder: reservation_proofs)
         proofImageUrl = await StoreData().uploadImageToStorage(
             "reservation_proofs", fileName, event.fileProof!);
       }
 
-      // 2. Panggil Repo dengan URL bukti (kosong jika tidak upload)
       await repositories.reservation.createReservation(
         event.buildingName,
         event.contactId,
@@ -60,23 +89,20 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
         event.information,
         event.agency,
         event.image,
-        proofImageUrl, // <--- PASSING URL KE REPO
+        proofImageUrl,
       );
 
       if (repositories.reservation.statusCode == "200") {
         emit(ReservationCreateSuccess());
-        add(GetReservationForUser());
+        // Tidak perlu add(GetReservationForUser()) lagi karena Stream akan otomatis update
       } else {
         emit(ReservationCreateFailed());
       }
     } catch (e) {
-      // Sangat disarankan handle error state agar loading berhenti
       emit(ReservationCreateFailed());
-      throw Exception(e);
     }
   }
 
-  /// pengecekan reservasi awalan
   _getReservationCheck(
       GetReservationCheck event, Emitter<ReservationState> emit) async {
     emit(ReservationLoading());
@@ -90,100 +116,56 @@ class ReservationBloc extends Bloc<ReservationEvent, ReservationState> {
       );
       if(repositories.reservation.statusCode == "201"){
         emit(ReservationBooked(booked));
-        add(GetReservationForUser());
       } if(repositories.reservation.statusCode == "200"){
         emit(ReservationNoBooked());
-        add(GetReservationForUser());
       }
     } catch (e) {
       throw Exception(e);
     }
   }
 
-  /// mendapatkan info reservasi bagi pengguna
-  _getReservationForUser(
-      GetReservationForUser event, Emitter<ReservationState> emit) async {
-    emit(ReservationLoading());
-    try {
-      final user = await _getUsername();
-      final reservations =
-      await repositories.reservation.getReservationForUser(user);
-      if (repositories.reservation.statusCode == "200") {
-        emit(ReservationGetSuccess(reservations));
-      } else {
-        emit(ReservationGetFailed());
-      }
-    } catch (e) {
-      throw Exception(e);
-    }
-  }
-
-  /// mendapatkan info reservasi untuk admin
-  _getReservationForAccept(
-      GetReservationForAdmin event, Emitter<ReservationState> emit) async {
-    emit(ReservationLoading());
-    try {
-      final agency = await _getAgency();
-      final reservations =
-      await repositories.reservation.getReservationForAdmin(agency);
-      if (repositories.reservation.statusCode == "200") {
-        emit(ReservationGetSuccess(reservations));
-      } else {
-        emit(ReservationGetFailed());
-      }
-    } catch (e) {
-      throw Exception(e);
-    }
-  }
-
-  /// menghapus reservasi
   _deleteReservation(
       DeleteReservation event, Emitter<ReservationState> emit) async {
-    emit(ReservationLoading());
+    // Note: Saat delete, tidak perlu emit Loading agar stream tidak putus visualnya
+    // atau biarkan loading sebentar.
     try {
       await repositories.reservation.deleteReservation(event.id);
       if (repositories.reservation.statusCode == "200") {
         emit(ReservationDeleteSuccess());
-        add(GetReservationForUser());
+        // Stream otomatis update UI
       } else {
         emit(ReservationDeleteFailed());
       }
     } catch (e) {
-      throw Exception(e);
+      emit(ReservationDeleteFailed());
     }
   }
 
-  /// terima/tolak reservasi bagi admin
   _updateStatusReservation(
       UpdateStatusReservation event, Emitter<ReservationState> emit) async {
-    emit(ReservationLoading());
     try {
-      // vvv INI BAGIAN KRUSIAL YANG ANDA LEWATKAN SEBELUMNYA vvv
       await repositories.reservation.updateStatusReservation(
           event.id,
           event.status,
-          note: event.note // <--- Pastikan baris ini ada!
+          note: event.note
       );
-      // ^^^ SELESAI ^^^
 
       if (repositories.reservation.statusCode == "200") {
         emit(ReservationUpdateSuccess());
-        add(GetReservationForAdmin());
+        // Stream otomatis update UI
       } else {
         emit(ReservationUpdateFailed());
       }
     } catch (e) {
-      throw Exception(e);
+      emit(ReservationUpdateFailed());
     }
   }
 
-  //Get Username
   _getUsername() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString("user");
   }
 
-  //Get Agency
   _getAgency() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString("agency");

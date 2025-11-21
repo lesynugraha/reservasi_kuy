@@ -1,19 +1,24 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:gap/gap.dart';
 import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:reservation_app/src/data/model/user_model.dart';
 import 'package:shared_preferences/shared_preferences.dart';
-import 'package:flutter/foundation.dart';
 
+// Import Model & Repositories
+import '../../../data/model/reservation_model.dart';
+import '../../../data/model/user_model.dart';
 import '../../../data/repositories/repositories.dart';
 import '../../../data/utils/notification_services.dart';
+
+// Import Bloc
 import '../../../data/bloc/history/history_bloc.dart';
 import '../../../data/bloc/register/register_bloc.dart';
 import '../../../data/bloc/reservation/reservation_bloc.dart';
 import '../../../data/bloc/user/user_bloc.dart';
-import '../../../data/model/reservation_model.dart';
+
+// Import Utils & Widgets
 import '../../utils/general/parsing.dart';
 import '../../utils/routes/route_name.dart';
 import '../../widgets/general/header_pages.dart';
@@ -71,6 +76,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   }
 
   /// user: menghapus reservasi dan membuat history
+  // Mengembalikan fungsi (closure) agar bisa dipanggil kapan saja
   actionReservationUser(ReservationModel reservation, String status) {
     return () {
       reservationBloc = context.read<ReservationBloc>();
@@ -80,9 +86,9 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     };
   }
 
-  // vvv PERBAIKAN 1: Menambahkan parameter {String? note} vvv
   /// admin: membuat laporan custom id
-  createReportCustomId(ReservationModel reservation, String status, String id, {String? note}) {
+  createReportCustomId(ReservationModel reservation, String status, String id,
+      {String? note}) {
     historyBloc = context.read<HistoryBloc>();
     historyBloc.add(
       CreateReportCustomId(
@@ -96,7 +102,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         reservation.information!,
         status,
         reservation.image!,
-        note: note, // <--- MENGIRIM NOTE KE BLOC
+        note: note,
         proofImage: reservation.proofImage,
       ),
     );
@@ -126,16 +132,13 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     reservationBloc.add(GetReservationForAdmin());
   }
 
-  // vvv PERBAIKAN 2: Mengirim note ke createReportCustomId vvv
   /// admin: menerima dan menolak reservasi serta membuat laporan
   actionReservationAdmin(ReservationModel reservation, String status,
       {String? note}) {
     reservationBloc = context.read<ReservationBloc>();
-    // Update Status Reservasi (ini sudah benar)
     reservationBloc.add(
         UpdateStatusReservation(reservation.id!, status, note: note));
 
-    // Kirim juga ke Laporan/Report
     createReportCustomId(reservation, status, reservation.id!, note: note);
   }
 
@@ -165,7 +168,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
     date = dateTime.toString();
   }
 
-  // Fungsi Update Token Otomatis (Versi Revisi)
+  // Fungsi Update Token Otomatis
   _updateFCMToken() async {
     try {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -175,7 +178,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
         String? token = await NotificationServices().getDeviceToken();
         if (token != null) {
           await UserRepo().updateUserFCMToken(username, token);
-          // Gunakan kDebugMode agar 'hint' hilang
           if (kDebugMode) {
             print("✅ Token diperbarui otomatis di Home untuk: $username");
           }
@@ -191,10 +193,16 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
   /// umum: informasi role
   getRole() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
-    userRole = prefs.getString("role")!;
-    setState(() {
-      userRole = userRole;
-    });
+    if (prefs.containsKey("role")) {
+      userRole = prefs.getString("role")!;
+      setState(() {
+        userRole = userRole;
+      });
+    } else {
+      setState(() {
+        userRole = "";
+      });
+    }
   }
 
   @override
@@ -533,17 +541,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ),
                             );
                           },
+                          // vvv PERBAIKAN UTAMA DISINI vvv
+                          // Kita membungkus logika hapus dan logika navigasi bersama-sama
                           deleteFunction: () {
-                            PopUp().whenDoSomething(
-                              context,
-                              "Ingin menghapus reservasi?",
-                              Icons.delete_forever,
-                              actionReservationUser(
-                                reservations[index],
-                                "Ditolak",
-                              ),
-                            );
+                            // 1. Jalankan fungsi hapus (actionReservationUser mengembalikan function)
+                            actionReservationUser(
+                                reservations[index], "Ditolak")();
+
+                            // 2. Paksa pindah ke halaman History menggunakan GoRouter
+                            // Ini menjamin navigasi berjalan setelah tombol ditekan
+                            context.goNamed(Routes().history);
                           },
+                          // ^^^ SELESAI PERBAIKAN ^^^
                           role: userRole,
                         );
                       },
@@ -579,13 +588,8 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       "Berhasil",
                       Icons.check_circle,
                     );
-                  } else if (state is ReservationDeleteSuccess) {
-                    PopUp().whenSuccessDoSomething(
-                      context,
-                      "Berhasil",
-                      Icons.check_circle,
-                    );
                   }
+                  // Popup "Berhasil Hapus" SUDAH DIHAPUS agar tidak mengganggu navigasi
                 },
               ),
               BlocListener<RegisterBloc, RegisterState>(

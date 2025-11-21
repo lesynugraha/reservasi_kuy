@@ -7,7 +7,8 @@ import '../../utils/constant/constant.dart';
 import '../../utils/general/parsing.dart';
 import '../../widgets/general/widget_title_desc_card_view.dart';
 import '../../widgets/general/widget_text_content_reservation.dart';
-import '../../widgets/general/dialog_proof_view.dart'; // <--- Import Dialog
+import '../../widgets/general/dialog_proof_view.dart';
+import '../../utils/routes/route_name.dart'; // Import Routes
 import 'widget_button_action.dart';
 
 class ReservationCardView extends StatelessWidget {
@@ -135,8 +136,7 @@ class ReservationCardView extends StatelessWidget {
                         TextTitleDescriptionCardView(
                           text: reservation.information!,
                         ),
-
-                        // vvv TOMBOL LIHAT BUKTI (Hanya jika ada buktinya) vvv
+                        // Menampilkan tombol Bukti jika ada
                         if (reservation.proofImage != null &&
                             reservation.proofImage!.isNotEmpty) ...[
                           const Gap(8),
@@ -171,15 +171,14 @@ class ReservationCardView extends StatelessWidget {
                             ),
                           ),
                         ],
-                        // ^^^ SAMPAI SINI ^^^
-
                         const Gap(10),
                       ],
                     ),
                   ),
                 ],
               ),
-              buttonByRole(),
+              // Pass context ke buttonByRole
+              buttonByRole(context),
             ],
           ),
         ),
@@ -187,7 +186,7 @@ class ReservationCardView extends StatelessWidget {
     );
   }
 
-  buttonByRole() {
+  buttonByRole(BuildContext context) {
     if (role == "1") {
       return Row(
         mainAxisAlignment: MainAxisAlignment.end,
@@ -207,7 +206,7 @@ class ReservationCardView extends StatelessWidget {
       return Align(
         alignment: Alignment.bottomRight,
         child: Builder(
-          builder: (context) {
+          builder: (ctx) {
             if (reservation.status == "Menunggu") {
               return ButtonAction(
                 name: "Batal",
@@ -219,9 +218,16 @@ class ReservationCardView extends StatelessWidget {
                 function: doneFunction ?? () {},
               );
             } else if (reservation.status == "Ditolak") {
+              // REVISI TOMBOL DAN NAVIGASI
               return ButtonAction(
-                name: "Hapus",
-                function: deleteFunction ?? () {},
+                name: "Reservasi telah tervalidasi",
+                function: () {
+                  if (deleteFunction != null) {
+                    deleteFunction!();
+                  }
+                  // Navigasi ke History setelah tombol ditekan
+                  Navigator.pushNamed(context, Routes().history);
+                },
               );
             } else {
               return const SizedBox();
