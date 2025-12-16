@@ -18,11 +18,18 @@ import 'src/data/bloc/user/user_bloc.dart';
 import 'src/data/repositories/repositories.dart';
 
 void main() async {
+  // Memastikan binding Flutter telah terinisialisasi sebelum menjalankan kode async (seperti Firebase).
+  // Ini wajib dipanggil jika fungsi main() bersifat asynchronous.
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Inisialisasi Firebase berdasarkan platform (Android/iOS) menggunakan konfigurasi dari firebase_options.dart.
   await Firebase.initializeApp(
     options: DefaultFirebaseOptions.currentPlatform,
   );
+
+  // Memanggil service notifikasi di awal agar aplikasi siap menerima pesan FCM segera setelah dijalankan.
   await NotificationServices().initialMessaging();
+
   runApp(const MyApp());
 }
 
@@ -31,8 +38,11 @@ class MyApp extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Menggunakan MultiBlocProvider di root widget (paling atas).
+    // Tujuannya agar state dari Bloc-bloc ini bersifat global dan bisa diakses dari halaman mana saja (Dependency Injection).
     return MultiBlocProvider(
       providers: [
+        // Setiap Bloc diinjeksi dengan 'Repositories()' agar mereka bisa mengakses data dari Firebase.
         BlocProvider(
           create: (context) => AuthenticationBloc(repositories: Repositories()),
         ),
@@ -63,6 +73,7 @@ class MyApp extends StatelessWidget {
           create: (context) => LogoutBloc(repositories: Repositories()),
         ),
       ],
+      // Masuk ke widget utama aplikasi (Apps) yang mengatur routing dan tema.
       child: const Apps(),
     );
   }

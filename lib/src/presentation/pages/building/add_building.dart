@@ -27,8 +27,12 @@ class AddBuildingPage extends StatefulWidget {
   State<AddBuildingPage> createState() => _AddBuildingPageState();
 }
 
+// Menggunakan TickerProviderStateMixin karena halaman ini memerlukan TabController
+// untuk animasi perpindahan antara tab 'Tambah' dan 'Edit/Hapus'.
 class _AddBuildingPageState extends State<AddBuildingPage>
     with TickerProviderStateMixin {
+
+  // Controller untuk menghandle inputan form
   late TextEditingController buildingNameController;
   late TextEditingController descController;
   late TextEditingController facilityController;
@@ -36,15 +40,24 @@ class _AddBuildingPageState extends State<AddBuildingPage>
   late TextEditingController ruleController;
   late TextEditingController imageController;
   late TextEditingController statusController;
+
   late TabController _tabController;
   late BuildingBloc _buildingBloc;
+
+  // GlobalKey untuk validasi form (cek apakah input kosong/tidak valid)
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
+
+  // Variabel untuk menampung gambar sementara dalam bentuk bytes sebelum diupload
   Uint8List? imagePicked;
 
-  /// menambahkan gedung
+  /// Logika inti penambahan gedung.
+  /// Alur: Cek apakah user memilih gambar -> Upload ke Firebase Storage -> Ambil URL -> Simpan data ke Firestore.
+  /// Jika tidak ada gambar, langsung simpan data teks saja.
   addBuilding(BuildContext context) {
     return () async {
+      // Skenario 1: User upload gambar
       if (imagePicked != null) {
+        // Upload gambar ke storage dengan nama file unik (timestamp)
         final urlImage = await StoreData().uploadImageToStorage(
           "building",
           DateFormat('yyyyMMddHHmmss').format(DateTime.now()),
@@ -53,6 +66,7 @@ class _AddBuildingPageState extends State<AddBuildingPage>
 
         if (!context.mounted) return;
         _buildingBloc = context.read<BuildingBloc>();
+        // Trigger event tambah data dengan menyertakan URL gambar dari storage
         _buildingBloc.add(
           AddBuilding(
             buildingNameController.text,
@@ -64,6 +78,7 @@ class _AddBuildingPageState extends State<AddBuildingPage>
           ),
         );
       } else {
+        // Skenario 2: User tidak upload gambar (pakai default atau string kosong)
         _buildingBloc = context.read<BuildingBloc>();
         _buildingBloc.add(
           AddBuilding(
@@ -79,13 +94,13 @@ class _AddBuildingPageState extends State<AddBuildingPage>
     };
   }
 
-  /// mendapatkan info gedung
+  /// Trigger event untuk mengambil daftar gedung terbaru dari database (refresh data).
   _getBuilding() {
     _buildingBloc = context.read<BuildingBloc>();
     _buildingBloc.add(GetBuildingByAgency());
   }
 
-  /// menghapus gedung
+  /// Trigger event hapus gedung berdasarkan ID dokumen.
   deleteBuilding(String id) {
     return () {
       _buildingBloc = context.read<BuildingBloc>();
@@ -93,7 +108,8 @@ class _AddBuildingPageState extends State<AddBuildingPage>
     };
   }
 
-  /// pilih gambar dari perangkat
+  /// Memanggil image picker (galeri) dan menyimpan hasilnya ke state lokal (imagePicked)
+  /// untuk ditampilkan sebagai preview sebelum diupload.
   selectImage() async {
     Uint8List img = await StoreData().pickImage(ImageSource.gallery);
     setState(() {
@@ -110,12 +126,14 @@ class _AddBuildingPageState extends State<AddBuildingPage>
     ruleController = TextEditingController();
     imageController = TextEditingController();
     statusController = TextEditingController();
+    // Inisialisasi tab controller untuk 2 tab (Tambah & Manage)
     _tabController = TabController(length: 2, vsync: this);
     super.initState();
   }
 
   @override
   void dispose() {
+    // Wajib dispose controller untuk mencegah memory leak
     super.dispose();
     _tabController.dispose();
     buildingNameController.dispose();
@@ -129,6 +147,8 @@ class _AddBuildingPageState extends State<AddBuildingPage>
 
   @override
   Widget build(BuildContext context) {
+    // BlocListener digunakan untuk menangani feedback/side-effect (Popup Sukses/Gagal).
+    // Tidak mereturn widget UI, hanya menjalankan logic ketika state berubah.
     return BlocListener<BuildingBloc, BuildingState>(
       listener: (context, state) {
         if (state is BuildingAddSuccess) {
@@ -158,6 +178,7 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                   const HeaderDetailPage(
                     pageName: "Tambah Gedung",
                   ),
+                  // TabBar navigasi antar fitur dalam satu halaman
                   TabBar(
                     controller: _tabController,
                     indicatorSize: TabBarIndicatorSize.tab,
@@ -170,19 +191,22 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                     ],
                   ),
                   Expanded(
+                    // TabBarView berisi konten sesuai tab yang dipilih
                     child: TabBarView(
                       controller: _tabController,
                       children: [
-                        ///first tab bar
+                        /// Tab 1: Form tambah gedung
                         addBuildingContent(),
 
-                        ///second tab bar
+                        /// Tab 2: List manajemen gedung (Edit/Hapus)
                         manageBuildingContent(),
                       ],
                     ),
                   ),
                 ],
               ),
+              // Overlay Loading Indicator
+              // Muncul di tengah layar hanya saat state sedang 'BuildingLoading'
               Center(
                 child: BlocBuilder<BuildingBloc, BuildingState>(
                   builder: (context, state) {
@@ -200,24 +224,29 @@ class _AddBuildingPageState extends State<AddBuildingPage>
     );
   }
 
+  // Widget konten untuk Tab 1 (Form Input)
   RefreshIndicator addBuildingContent() {
     return RefreshIndicator(
-      onRefresh: () async {},
+      onRefresh: () async {}, // Pull to refresh kosong (opsional)
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
         child: Padding(
           padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
           child: Form(
-            key: _formKey,
+            key: _formKey, // Key untuk validasi
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 const Gap(10),
+                // Area upload & preview gambar
                 Center(
                   child: Stack(
                     children: [
                       Builder(
                         builder: (context) {
+                          // Logic tampilan gambar:
+                          // 1. Jika user pilih gambar baru (imagePicked), tampilkan itu.
+                          // 2. Jika tidak, tampilkan placeholder default.
                           if (imagePicked != null) {
                             return Image(
                               height: 250,
@@ -244,6 +273,7 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                           }
                         },
                       ),
+                      // Tombol Edit/Pilih Gambar (Pojok Kanan Bawah)
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -271,39 +301,41 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                           ),
                         ),
                       ),
+                      // Tombol Hapus Gambar (Pojok Kanan Atas - Muncul jika gambar dipilih)
                       imagePicked != null
                           ? Positioned(
-                              top: 0,
-                              right: 0,
-                              child: Container(
-                                decoration: BoxDecoration(
-                                  shape: BoxShape.circle,
-                                  color: Colors.blueAccent.withOpacity(0.3),
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () {
-                                      setState(() {
-                                        imagePicked = null;
-                                      });
-                                    },
-                                    customBorder: const CircleBorder(),
-                                    child: const Padding(
-                                      padding: EdgeInsets.all(4),
-                                      child: Icon(
-                                        Icons.delete,
-                                      ),
-                                    ),
-                                  ),
+                        top: 0,
+                        right: 0,
+                        child: Container(
+                          decoration: BoxDecoration(
+                            shape: BoxShape.circle,
+                            color: Colors.blueAccent.withOpacity(0.3),
+                          ),
+                          child: Material(
+                            color: Colors.transparent,
+                            child: InkWell(
+                              onTap: () {
+                                setState(() {
+                                  imagePicked = null;
+                                });
+                              },
+                              customBorder: const CircleBorder(),
+                              child: const Padding(
+                                padding: EdgeInsets.all(4),
+                                child: Icon(
+                                  Icons.delete,
                                 ),
                               ),
-                            )
+                            ),
+                          ),
+                        ),
+                      )
                           : const SizedBox(),
                     ],
                   ),
                 ),
                 const Gap(20),
+                // Form Fields
                 const CustomTitleTextFormField(subtitle: "Nama Gedung"),
                 CustomTextFormField(
                   fieldName: "Nama Gedung",
@@ -335,6 +367,7 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                   prefixIcon: Icons.rule,
                 ),
                 const Gap(15),
+                // Menampilkan pesan error jika proses tambah gagal
                 BlocBuilder<BuildingBloc, BuildingState>(
                   builder: (context, state) {
                     if (state is BuildingAddFailed) {
@@ -351,11 +384,13 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                   },
                 ),
                 const Gap(15),
+                // Tombol Submit
                 Align(
                   alignment: Alignment.bottomRight,
                   child: ButtonPositive(
                     name: "Tambah",
                     function: () {
+                      // Validasi input sebelum eksekusi logic
                       if (_formKey.currentState!.validate()) {
                         PopUp().whenDoSomething(
                           context,
@@ -376,10 +411,11 @@ class _AddBuildingPageState extends State<AddBuildingPage>
     );
   }
 
+  // Widget konten untuk Tab 2 (Manajemen List)
   RefreshIndicator manageBuildingContent() {
     return RefreshIndicator(
       onRefresh: () async {
-        _getBuilding();
+        _getBuilding(); // Refresh data saat ditarik ke bawah
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -388,6 +424,7 @@ class _AddBuildingPageState extends State<AddBuildingPage>
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
+              // Menggunakan BlocBuilder untuk merender list sesuai state data terbaru
               BlocBuilder<BuildingBloc, BuildingState>(
                 builder: (context, state) {
                   if (state is BuildingGetSuccess) {
@@ -403,6 +440,7 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                             ),
                           ),
                           const Gap(10),
+                          // List view untuk menampilkan kartu gedung
                           ListView.builder(
                             itemCount: buildings.length,
                             physics: const NeverScrollableScrollPhysics(),
@@ -417,12 +455,14 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                                 ),
                                 child: EditBuildingCardView(
                                   building: buildings[index],
+                                  // Navigasi ke halaman edit dengan membawa data objek gedung
                                   functionEdit: () {
                                     context.pushNamed(
                                       Routes().editBuilding,
                                       extra: buildings[index],
                                     );
                                   },
+                                  // Trigger dialog konfirmasi hapus
                                   functionDelete: () {
                                     PopUp().whenDoSomething(
                                       context,
@@ -438,9 +478,10 @@ class _AddBuildingPageState extends State<AddBuildingPage>
                         ],
                       );
                     } else {
+                      // Tampilan jika data kosong
                       return Container(
                         decoration:
-                            const BoxDecoration(color: Color(0x80FFFFFF)),
+                        const BoxDecoration(color: Color(0x80FFFFFF)),
                         child: Center(
                           child: Text(
                             "Tidak ada data gedung",

@@ -14,10 +14,12 @@ import '../../widgets/general/widget_custom_text_form_field.dart';
 import '../../widgets/general/widget_custom_title_text_form_field.dart';
 import 'widget_profile_text_field.dart';
 
+// Halaman untuk mengedit profil pengguna.
+// Digunakan oleh SuperAdmin untuk mengedit data Supervisor/User.
 class EditUserPage extends StatefulWidget {
   const EditUserPage({
     super.key,
-    required this.userModel,
+    required this.userModel, // Menerima data user yang akan diedit
   });
 
   final UserModel userModel;
@@ -27,6 +29,7 @@ class EditUserPage extends StatefulWidget {
 }
 
 class _EditUserPageState extends State<EditUserPage> {
+  // Controller untuk setiap field data.
   late TextEditingController idController;
   late TextEditingController agencyController;
   late TextEditingController usernameController;
@@ -34,12 +37,16 @@ class _EditUserPageState extends State<EditUserPage> {
   late TextEditingController phoneController;
   late TextEditingController emailController;
   late TextEditingController passwordController;
+
+  // Controller sementara untuk fitur edit khusus (seperti username) via popup.
   late TextEditingController temporaryController;
+
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   final GlobalKey<FormState> formKeyEdit = GlobalKey<FormState>();
   late RegisterBloc registerBloc;
 
-  /// fungsi mengedit user
+  /// Fungsi utama untuk menyimpan perubahan data user secara keseluruhan.
+  /// Mengirim event 'EditUserAdmin' ke Bloc.
   editUser() {
     return () {
       registerBloc = context.read<RegisterBloc>();
@@ -55,7 +62,8 @@ class _EditUserPageState extends State<EditUserPage> {
     };
   }
 
-  /// fungsi mengedit username
+  /// Fungsi khusus untuk mengganti username.
+  /// Username perlu penanganan khusus (seperti cek ketersediaan/duplikasi di database) sebelum disimpan.
   changeUsername() {
     registerBloc = context.read<RegisterBloc>();
     registerBloc.add(ChangeUsername(
@@ -64,20 +72,23 @@ class _EditUserPageState extends State<EditUserPage> {
     ));
   }
 
-  /// popup ketika mengedit 1 field
-  /// TODO ubah menjadi custom function widget dan errornya
+  /// Popup dialog untuk edit field spesifik (dalam hal ini Username).
+  /// TODO: Ke depannya bisa dibuat widget reusable agar tidak hardcoded di sini.
   popUpEditUsername(
-    String fieldName,
-    TextEditingController controller,
-    IconData prefixIcon,
-  ) {
+      String fieldName,
+      TextEditingController controller,
+      IconData prefixIcon,
+      ) {
+    // Isi controller sementara dengan data saat ini agar user tidak perlu ketik ulang.
     temporaryController.text = controller.text;
+
     return showDialog(
       context: context,
-      barrierDismissible: false,
+      barrierDismissible: false, // Dialog tidak bisa ditutup dengan klik di luar area
       builder: (context) {
         return BlocListener<RegisterBloc, RegisterState>(
           listener: (context, state) {
+            // Jika sukses ganti username, tutup dialog.
             if (state is ChangeUsernameSuccess) {
               Navigator.of(context).pop();
             }
@@ -103,7 +114,7 @@ class _EditUserPageState extends State<EditUserPage> {
                       prefixIcon: prefixIcon,
                     ),
 
-                    /// error when username is exist
+                    // Menampilkan pesan error khusus di dalam dialog jika username sudah ada.
                     BlocBuilder<RegisterBloc, RegisterState>(
                       builder: (context, state) {
                         if (state is ChangeUsernameFailed) {
@@ -136,6 +147,7 @@ class _EditUserPageState extends State<EditUserPage> {
               Row(
                 mainAxisAlignment: MainAxisAlignment.spaceAround,
                 children: [
+                  // Tombol Batal
                   InkWell(
                     onTap: () {
                       Navigator.of(context).pop();
@@ -162,11 +174,13 @@ class _EditUserPageState extends State<EditUserPage> {
                       ),
                     ),
                   ),
+                  // Tombol Simpan (di dalam popup)
                   InkWell(
                     onTap: () {
                       if (formKeyEdit.currentState!.validate()) {
+                        // Update controller utama dengan nilai dari controller sementara
                         controller.text = temporaryController.text;
-                        changeUsername();
+                        changeUsername(); // Jalankan logika cek username
                       }
                     },
                     borderRadius: BorderRadius.circular(10),
@@ -198,6 +212,8 @@ class _EditUserPageState extends State<EditUserPage> {
 
   @override
   void initState() {
+    // Pre-filling data form dengan data user yang diterima dari parameter.
+    // Memudahkan user melakukan edit tanpa harus mengisi ulang semua field.
     idController = TextEditingController(text: widget.userModel.id);
     agencyController = TextEditingController(text: widget.userModel.agency);
     usernameController = TextEditingController(text: widget.userModel.username);
@@ -211,6 +227,7 @@ class _EditUserPageState extends State<EditUserPage> {
 
   @override
   void dispose() {
+    // Membersihkan semua controller.
     idController.dispose();
     agencyController.dispose();
     usernameController.dispose();
@@ -224,6 +241,7 @@ class _EditUserPageState extends State<EditUserPage> {
 
   @override
   Widget build(BuildContext context) {
+    // BlocListener mendengarkan hasil akhir penyimpanan data (EditSuccess).
     return BlocListener<RegisterBloc, RegisterState>(
       listener: (context, state) {
         if (state is EditSuccess) {
@@ -252,7 +270,7 @@ class _EditUserPageState extends State<EditUserPage> {
                         padding: const EdgeInsets.symmetric(
                             vertical: 12, horizontal: 8),
                         child: Form(
-                          key: formKey,
+                          key: formKey, // Kunci validasi form utama
                           child: Column(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
@@ -260,12 +278,15 @@ class _EditUserPageState extends State<EditUserPage> {
                               const CustomTitleTextFormField(
                                 subtitle: "Username",
                               ),
+                              // Field Username bersifat spesial: Editnya lewat Popup (isEdit: true).
+                              // Ini mencegah user asal ganti username tanpa validasi ketersediaan.
                               CustomProfileTextFormField(
                                 fieldName: "Username",
                                 controller: usernameController,
                                 prefixIcon: Icons.person,
                                 isEdit: true,
                                 function: () {
+                                  // Menggunakan SchedulerBinding agar popup muncul setelah frame selesai dirender.
                                   SchedulerBinding.instance
                                       .addPostFrameCallback((_) {
                                     popUpEditUsername(
@@ -279,6 +300,7 @@ class _EditUserPageState extends State<EditUserPage> {
                               const CustomTitleTextFormField(
                                 subtitle: "Instansi",
                               ),
+                              // Field Instansi (Read-only jika role tertentu, diatur di widget CustomTextFormField)
                               CustomTextFormField(
                                 fieldName: "Instansi",
                                 controller: agencyController,
@@ -318,6 +340,7 @@ class _EditUserPageState extends State<EditUserPage> {
                                 prefixIcon: Icons.lock,
                               ),
                               const Gap(20),
+                              // Tombol Simpan Perubahan Utama
                               Align(
                                 alignment: Alignment.bottomRight,
                                 child: ButtonPositive(
@@ -328,7 +351,7 @@ class _EditUserPageState extends State<EditUserPage> {
                                         context,
                                         "Simpan perubahan user?",
                                         Icons.person,
-                                        editUser(),
+                                        editUser(), // Panggil fungsi editUser
                                       );
                                     }
                                   },
@@ -344,6 +367,7 @@ class _EditUserPageState extends State<EditUserPage> {
                 ),
               ],
             ),
+            // Indikator Loading Global (memblokir seluruh layar saat simpan data)
             BlocBuilder<RegisterBloc, RegisterState>(
               builder: (context, state) {
                 if (state is RegisterLoading) {

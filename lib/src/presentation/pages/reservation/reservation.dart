@@ -30,40 +30,50 @@ class _ReservationPageState extends State<ReservationPage> {
   late ReservationBloc reservationBloc;
   late BuildingModel building;
 
-  /// fungsi untuk mengambil rentang tanggal
+  /// Fungsi Inti: Memilih Rentang Tanggal (Date Range Picker).
+  /// Saya menggunakan widget bawaan Flutter 'showDateRangePicker' karena UX-nya intuitif
+  /// untuk memilih tanggal mulai dan selesai dalam satu dialog.
   pickRangeDate(BuildContext context) async {
     final DateTimeRange? dateTimeRange = await showDateRangePicker(
       context: context,
-      firstDate: DateTime.now(),
-      lastDate: DateTime(DateTime.now().year + 2),
+      firstDate: DateTime.now(), // Tidak boleh pilih tanggal lampau
+      lastDate: DateTime(DateTime.now().year + 2), // Batas maksimal 2 tahun ke depan
       helpText: "Pilih tanggal",
       saveText: "Simpan",
     );
+
+    // Jika user jadi memilih tanggal (tidak cancel):
     if (dateTimeRange != null) {
       setState(() {
         selectedTimeRange = dateTimeRange;
+        // Simpan tanggal ke controller untuk dikirim ke backend nanti
         dateStartController =
             TextEditingController(text: selectedTimeRange.start.toString());
         dateEndController =
             TextEditingController(text: selectedTimeRange.end.toString());
       });
+      // Otomatis cari gedung yang tersedia di tanggal tersebut setelah memilih.
       getBuildingAvail();
     }
   }
 
-  /// mendapatkan gedung yang tersedia
+  /// Trigger event ke Bloc untuk mendapatkan daftar gedung.
+  /// (Catatan: Logic filter ketersediaan sebenarnya ada di sisi Backend/Query,
+  /// di sini kita request data gedung dulu).
   getBuildingAvail() {
     reservationBuildingBloc = context.read<ReservationBuildingBloc>();
     reservationBuildingBloc.add(GetBuildingAvail());
   }
 
-  /// pengecekan gedung yang tersedia
+  /// Validasi Akhir: Cek spesifik apakah gedung X kosong di tanggal Y.
+  /// Fungsi ini dipanggil SAAT user menekan tombol "Reservasi" di salah satu gedung.
+  /// Tujuannya untuk memastikan tidak ada "Race Condition" (keduluan orang lain booking di detik yang sama).
   getReservationAvail(String dateStart, String dateEnd, String buildingName) {
     reservationBloc = context.read<ReservationBloc>();
     reservationBloc.add(GetReservationCheck(dateStart, dateEnd, buildingName));
   }
 
-  /// building initial
+  /// Reset/Inisialisasi data gedung saat halaman pertama dibuka.
   buildingAvailInitial() {
     reservationBuildingBloc = context.read<ReservationBuildingBloc>();
     reservationBuildingBloc.add(InitialBuildingAvail());
@@ -71,6 +81,7 @@ class _ReservationPageState extends State<ReservationPage> {
 
   @override
   void initState() {
+    // Default range tanggal adalah hari ini
     selectedTimeRange = DateTimeRange(
       start: DateTime.now(),
       end: DateTime.now(),
@@ -91,18 +102,22 @@ class _ReservationPageState extends State<ReservationPage> {
 
   @override
   Widget build(BuildContext context) {
+    // BlocListener khusus untuk mendengarkan hasil pengecekan ketersediaan (GetReservationCheck).
     return BlocListener<ReservationBloc, ReservationState>(
       listener: (context, state) {
+        // KASUS 1: Gedung SUDAH DIBOOKING orang lain.
         if (state is ReservationBooked) {
           if (state.booked.isNotEmpty) {
-            // showToast(context, "Tidak tersedia pada tanggal ini");
+            // Tampilkan popup info siapa yang meminjam, supaya transparan.
             PopUp().whenSuccessDoSomething(
               context,
               "Dipakai oleh ${state.booked.first.contactName}\nMulai: ${ParsingString().convertDate(state.booked.first.dateStart!)}\nSelesai: ${ParsingString().convertDate(state.booked.first.dateEnd!)}",
               Icons.person,
             );
           }
+          // KASUS 2: Gedung AMAN/KOSONG.
         } else if (state is ReservationNoBooked) {
+          // Tampilkan konfirmasi untuk lanjut ke halaman form data diri (ConfirmReservation).
           PopUp().whenDoSomething(
             context,
             "Bisa melakukan reservasi. Reservasi sekarang?",
@@ -110,10 +125,10 @@ class _ReservationPageState extends State<ReservationPage> {
                 () {
               return context.pushNamed(
                 Routes().confirmReservation,
-                extra: building,
+                extra: building, // Bawa objek gedung yang dipilih
                 queryParameters: {
-                  "dateStart": dateStartController.text.toString(),
-                  "dateEnd": dateEndController.text.toString(),
+                  "dateStart": dateStartController.text.toString(), // Bawa tanggal mulai
+                  "dateEnd": dateEndController.text.toString(),     // Bawa tanggal selesai
                 },
               );
             },
@@ -131,6 +146,7 @@ class _ReservationPageState extends State<ReservationPage> {
                 ),
                 Expanded(
                   child: RefreshIndicator(
+                    // Fitur Reset: Tarik layar untuk menghapus filter tanggal dan reset list gedung.
                     onRefresh: () async {
                       if (dateStartController.text.isNotEmpty &&
                           dateEndController.text.isNotEmpty) {
@@ -151,6 +167,7 @@ class _ReservationPageState extends State<ReservationPage> {
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
+                            // Area Filter Tanggal (Box Border Hitam)
                             Container(
                               width: double.infinity,
                               decoration: BoxDecoration(
@@ -165,7 +182,7 @@ class _ReservationPageState extends State<ReservationPage> {
                                 child: IntrinsicHeight(
                                   child: Column(
                                     crossAxisAlignment:
-                                        CrossAxisAlignment.start,
+                                    CrossAxisAlignment.start,
                                     children: [
                                       Text(
                                         "Pilih tanggal reservasi",
@@ -175,6 +192,7 @@ class _ReservationPageState extends State<ReservationPage> {
                                         ),
                                       ),
                                       const Gap(10),
+                                      // Widget Custom untuk menampilkan tanggal yang dipilih / tombol pilih tanggal
                                       selectedDateRange(),
                                       const Divider(
                                         height: 1,
@@ -182,6 +200,7 @@ class _ReservationPageState extends State<ReservationPage> {
                                         thickness: 1,
                                       ),
                                       const Gap(30),
+                                      // Tombol Cari (Disable jika tanggal belum dipilih)
                                       Align(
                                         alignment: Alignment.bottomRight,
                                         child: ButtonPositive(
@@ -195,12 +214,15 @@ class _ReservationPageState extends State<ReservationPage> {
                               ),
                             ),
                             const Gap(18),
+                            // List Gedung yang tersedia (Hasil dari Bloc)
                             BlocBuilder<ReservationBuildingBloc,
                                 ReservationBuildingState>(
                               builder: (context, state) {
                                 if (state is ResBuGetSuccess) {
                                   final buildings = state.buildings;
+                                  // Sorting nama gedung A-Z agar mudah dicari
                                   buildings.sort((a, b) => a.name!.compareTo(b.name!));
+
                                   if (buildings.isNotEmpty) {
                                     return Column(
                                       children: [
@@ -219,16 +241,18 @@ class _ReservationPageState extends State<ReservationPage> {
                                           itemCount: buildings.length,
                                           shrinkWrap: true,
                                           physics:
-                                              const NeverScrollableScrollPhysics(),
+                                          const NeverScrollableScrollPhysics(),
                                           itemBuilder: (context, index) {
                                             return Padding(
                                               padding:
-                                                  const EdgeInsets.symmetric(
-                                                      vertical: 8),
+                                              const EdgeInsets.symmetric(
+                                                  vertical: 8),
                                               child: BuildingAvailableCardView(
                                                 building: buildings[index],
+                                                // Saat tombol 'Reservasi' diklik:
                                                 function: () {
                                                   building = buildings[index];
+                                                  // Cek ketersediaan lagi (Double Check)
                                                   getReservationAvail(
                                                     dateStartController.text,
                                                     dateEndController.text,
@@ -242,6 +266,7 @@ class _ReservationPageState extends State<ReservationPage> {
                                       ],
                                     );
                                   } else {
+                                    // Empty State
                                     return Center(
                                       child: Padding(
                                         padding: const EdgeInsets.all(12),
@@ -268,6 +293,7 @@ class _ReservationPageState extends State<ReservationPage> {
                 )
               ],
             ),
+            // Loading Overlay saat cek ketersediaan
             Center(
               child: BlocBuilder<ReservationBuildingBloc,
                   ReservationBuildingState>(
@@ -286,6 +312,9 @@ class _ReservationPageState extends State<ReservationPage> {
     );
   }
 
+  // Logic Tombol Cari:
+  // Tombol tidak bisa diklik (return fungsi kosong) jika tanggal belum dipilih lengkap.
+  // Ini mencegah user mencari tanpa filter tanggal.
   buttonSearch() {
     if (dateStartController.text.isEmpty || dateEndController.text.isEmpty) {
       return () {};
@@ -296,6 +325,10 @@ class _ReservationPageState extends State<ReservationPage> {
     }
   }
 
+  // Widget Tampilan Tanggal yang Dipilih.
+  // Mengubah tampilan secara dinamis:
+  // 1. Jika sudah pilih -> Tampilkan rentang tanggal + durasi hari + tombol reset (X).
+  // 2. Jika belum pilih -> Tampilkan teks "Pilih tanggal reservasi".
   selectedDateRange() {
     if (dateStartController.text.isNotEmpty &&
         dateEndController.text.isNotEmpty) {
@@ -312,7 +345,7 @@ class _ReservationPageState extends State<ReservationPage> {
                   ),
                   child: InkWell(
                     onTap: () {
-                      pickRangeDate(context);
+                      pickRangeDate(context); // Bisa ubah tanggal lagi
                     },
                     child: const Icon(
                       Icons.date_range,
@@ -326,6 +359,7 @@ class _ReservationPageState extends State<ReservationPage> {
                   children: [
                     Expanded(
                       child: Text(
+                        // Format tampilan tanggal agar mudah dibaca user
                         "${ParsingString().convertDate(
                           dateStartController.text,
                         )} - ${ParsingString().convertDate(
@@ -339,6 +373,7 @@ class _ReservationPageState extends State<ReservationPage> {
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
+                    // Tombol Reset (X) untuk menghapus filter tanggal
                     Material(
                       color: Colors.transparent,
                       child: Padding(
@@ -348,7 +383,7 @@ class _ReservationPageState extends State<ReservationPage> {
                             setState(() {
                               dateStartController.clear();
                               dateEndController.clear();
-                              buildingAvailInitial();
+                              buildingAvailInitial(); // Reset list gedung ke kondisi awal
                             });
                           },
                           child: const Icon(
@@ -363,6 +398,7 @@ class _ReservationPageState extends State<ReservationPage> {
               ),
             ],
           ),
+          // Baris kedua: Menampilkan durasi (Total Hari)
           Row(
             crossAxisAlignment: CrossAxisAlignment.center,
             children: [
@@ -403,6 +439,7 @@ class _ReservationPageState extends State<ReservationPage> {
         ],
       );
     } else {
+      // Tampilan Default (Belum pilih tanggal)
       return Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [

@@ -267,14 +267,15 @@ class PopUp {
     );
   }
 
-  // vvv FUNGSI BARU: Pop-up dengan Input Text vvv
+  // vvv FUNGSI YANG DIPERBARUI: Menambahkan parameter validator vvv
   Future<void> whenDoSomethingWithInput(
       BuildContext context,
       String title,
       String labelInput,
       IconData icon,
-      ValueChanged<String> function,
-      ) {
+      ValueChanged<String> function, {
+        FormFieldValidator<String>? validator, // Parameter validator opsional
+      }) {
     final TextEditingController controller = TextEditingController();
     final formKey = GlobalKey<FormState>();
 
@@ -320,12 +321,14 @@ class PopUp {
                       vertical: 12,
                     ),
                   ),
-                  validator: (value) {
-                    if (value == null || value.isEmpty) {
-                      return 'Wajib diisi';
-                    }
-                    return null;
-                  },
+                  // Menggunakan validator yang dikirim, atau default jika null
+                  validator: validator ??
+                          (value) {
+                        if (value == null || value.isEmpty) {
+                          return 'Wajib diisi';
+                        }
+                        return null;
+                      },
                 ),
                 const Gap(20),
                 Row(
@@ -358,7 +361,6 @@ class PopUp {
                     const Gap(10),
                     // Tombol Konfirmasi
                     Expanded(
-                      // vvv SEKARANG INI AKAN BERHASIL KARENA IMPORT SUDAH ADA vvv
                       child: ButtonPositive(
                         name: "Konfirmasi",
                         function: () {

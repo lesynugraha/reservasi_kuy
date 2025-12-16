@@ -31,11 +31,16 @@ class ProfilePage extends StatefulWidget {
   State<ProfilePage> createState() => _ProfilePageState();
 }
 
+// Menggunakan TickerProviderStateMixin untuk animasi TabBar.
 class _ProfilePageState extends State<ProfilePage>
     with TickerProviderStateMixin {
+
+  // Bloc untuk berbagai fitur di halaman profil
   late LogoutBloc logoutBloc;
   late RegisterBloc registerBloc;
   late UserBloc userBloc;
+
+  // Controller untuk field data profil
   late TextEditingController idController;
   late TextEditingController agencyController;
   late TextEditingController usernameController;
@@ -44,32 +49,38 @@ class _ProfilePageState extends State<ProfilePage>
   late TextEditingController emailController;
   late TextEditingController passwordController;
   late TextEditingController imageController;
+
+  // Controller sementara untuk edit field (seperti nama/email) via popup
   late TextEditingController temporaryController;
+
   late String roleUser;
   late TabController tabController;
-  int selectedIndex = 0;
+  int selectedIndex = 0; // Index tab yang aktif (0: Admin, 1: User)
+
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
   Uint8List? imagePicked;
 
-  /// admin: fungsi untuk mendapatkan info list user
+  /// Fetch semua user untuk Admin Sekolah (Supervisor).
+  /// Hanya mengambil user (siswa) yang terdaftar di sekolah tersebut.
   getAllUserAdmin() {
     registerBloc = context.read<RegisterBloc>();
     registerBloc.add(GetAllUserAdmin());
   }
 
-  /// super admin: fungsi untuk mendapatkan info list user
+  /// Fetch semua user untuk Super Admin.
+  /// Mengambil daftar Supervisor Sekolah.
   getAllUserSuperAdmin() {
     registerBloc = context.read<RegisterBloc>();
     registerBloc.add(GetAllUserSuperAdmin());
   }
 
-  /// fungsi untuk mendapatkan info user
+  /// Fetch data diri user yang sedang login.
   getSingleUser() {
     userBloc = context.read<UserBloc>();
     userBloc.add(GetUserLoggedIn());
   }
 
-  /// admin: edit single user (logged in)
+  /// Update data profil user yang sedang login.
   editSingleUser() {
     userBloc = context.read<UserBloc>();
     userBloc.add(
@@ -85,7 +96,7 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
-  /// admin: fungsi menghapus user (pop up)
+  /// Hapus user lain (Fitur Admin).
   deleteUser(String id) {
     return () {
       registerBloc = context.read<RegisterBloc>();
@@ -93,7 +104,7 @@ class _ProfilePageState extends State<ProfilePage>
     };
   }
 
-  /// umum: mendapatkan role pengguna
+  /// Cek role user dari SharedPreferences.
   getRole() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     roleUser = prefs.getString("role")!;
@@ -102,7 +113,8 @@ class _ProfilePageState extends State<ProfilePage>
     });
   }
 
-  /// umum: fungsi untuk logout pop Up
+  /// Fungsi Logout.
+  /// Menghapus sesi login dan token FCM di backend jika perlu.
   logout() {
     return () {
       logoutBloc = context.read<LogoutBloc>();
@@ -110,7 +122,10 @@ class _ProfilePageState extends State<ProfilePage>
     };
   }
 
-  /// umum: pilih image dan update image
+  /// Fitur Ganti Foto Profil:
+  /// 1. Pilih gambar dari galeri.
+  /// 2. Upload ke Firebase Storage dengan nama file unik (username + timestamp).
+  /// 3. Update URL foto profil di database user.
   selectImage() async {
     Uint8List img = await StoreData().pickImage(ImageSource.gallery);
     final urlImage = await StoreData().uploadImageToStorage(
@@ -123,7 +138,7 @@ class _ProfilePageState extends State<ProfilePage>
     uploadImage(urlImage);
   }
 
-  /// umum: upload image
+  /// Trigger event update URL foto profil ke Bloc.
   uploadImage(String urlImage) {
     userBloc = context.read<UserBloc>();
     userBloc.add(
@@ -134,6 +149,7 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  /// Helper untuk menentukan fetch data user berdasarkan role admin.
   getALlUserByRole() {
     if (roleUser == "0") {
       return getAllUserSuperAdmin();
@@ -146,14 +162,16 @@ class _ProfilePageState extends State<ProfilePage>
 
   @override
   void didChangeDependencies() {
+    // Inisialisasi awal.
     roleUser = "";
     getRole();
-    getSingleUser();
+    getSingleUser(); // Load data profil sendiri
 
     tabController = TabController(
       length: 2,
       vsync: this,
     );
+    // Inisialisasi semua controller text field
     idController = TextEditingController();
     agencyController = TextEditingController();
     usernameController = TextEditingController();
@@ -168,6 +186,7 @@ class _ProfilePageState extends State<ProfilePage>
 
   @override
   void dispose() {
+    // Bersihkan semua controller dan listener
     idController.dispose();
     agencyController.dispose();
     usernameController.dispose();
@@ -185,6 +204,7 @@ class _ProfilePageState extends State<ProfilePage>
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
+        // Listener Logout: Pindah ke halaman Login jika sukses keluar.
         BlocListener<LogoutBloc, LogoutState>(
           listener: (context, state) {
             if (state is LogoutSuccess) {
@@ -192,6 +212,7 @@ class _ProfilePageState extends State<ProfilePage>
             }
           },
         ),
+        // Listener Data User: Mengisi text controller saat data berhasil diambil dari backend.
         BlocListener<UserBloc, UserState>(
           listener: (context, state) {
             if (state is UserGetSuccess) {
@@ -208,6 +229,7 @@ class _ProfilePageState extends State<ProfilePage>
 
           },
         ),
+        // Listener Register (Hapus User): Notifikasi sukses hapus.
         BlocListener<RegisterBloc, RegisterState>(
           listener: (context, state) {
             if (state is DeleteSuccess) {
@@ -221,24 +243,25 @@ class _ProfilePageState extends State<ProfilePage>
         )
       ],
       child: Scaffold(
+        // Floating Action Button (FAB) hanya muncul di tab "User" (index 1) untuk Admin menambah user baru.
         floatingActionButton: selectedIndex == 1
             ? BlocBuilder<UserBloc, UserState>(
-                builder: (context, state) {
-                  if (state is UserGetSuccess) {
-                    return CustomFAB(
-                      iconData: Icons.person_add,
-                      function: () {
-                        context.pushNamed(
-                          Routes().addUser,
-                          extra: state.user,
-                        );
-                      },
-                    );
-                  } else {
-                    return const SizedBox();
-                  }
+          builder: (context, state) {
+            if (state is UserGetSuccess) {
+              return CustomFAB(
+                iconData: Icons.person_add,
+                function: () {
+                  context.pushNamed(
+                    Routes().addUser,
+                    extra: state.user,
+                  );
                 },
-              )
+              );
+            } else {
+              return const SizedBox();
+            }
+          },
+        )
             : null,
         body: Stack(
           children: [
@@ -248,11 +271,13 @@ class _ProfilePageState extends State<ProfilePage>
                   name: "Profil Saya",
                 ),
                 const Gap(10),
+                // Konten dinamis berdasarkan role (Admin lihat TabBar, User lihat Profil saja).
                 Expanded(
                   child: contentByRole(),
                 ),
               ],
             ),
+            // Loading Overlay untuk berbagai Bloc
             Center(
               child: BlocBuilder<LogoutBloc, LogoutState>(
                 builder: (context, state) {
@@ -289,6 +314,9 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  // Logika Tampilan:
+  // Role 1 (Supervisor/Admin) -> Tampilan Admin (TabBar Manajemen).
+  // Role 2 (User Biasa) -> Tampilan User (Hanya Profil Diri).
   contentByRole() {
     if (roleUser == "1") {
       return adminUI();
@@ -297,6 +325,8 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
+  // Helper tampilan foto profil.
+  // Prioritas: Gambar baru dipilih (imagePicked) > Gambar dari URL (imageController) > Gambar Default.
   imageLoader() {
     if (imagePicked != null) {
       return ClipOval(
@@ -343,6 +373,7 @@ class _ProfilePageState extends State<ProfilePage>
     }
   }
 
+  // Tampilan UI untuk Admin: TabBar "Admin" (Profil Diri) dan "User" (Manajemen Siswa).
   Column adminUI() {
     return Column(
       children: [
@@ -368,13 +399,13 @@ class _ProfilePageState extends State<ProfilePage>
                 height: 40,
                 decoration: selectedIndex == 0
                     ? BoxDecoration(
-                        color: Colors.blueAccent.shade400,
-                        borderRadius: BorderRadius.circular(10),
-                      )
+                  color: Colors.blueAccent.shade400,
+                  borderRadius: BorderRadius.circular(10),
+                )
                     : BoxDecoration(
-                        color: Colors.grey.shade400,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: const Center(
                   child: Text("Admin"),
                 ),
@@ -386,13 +417,13 @@ class _ProfilePageState extends State<ProfilePage>
                 height: 40,
                 decoration: selectedIndex == 1
                     ? BoxDecoration(
-                        color: Colors.blueAccent.shade400,
-                        borderRadius: BorderRadius.circular(10),
-                      )
+                  color: Colors.blueAccent.shade400,
+                  borderRadius: BorderRadius.circular(10),
+                )
                     : BoxDecoration(
-                        color: Colors.grey.shade400,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
+                  color: Colors.grey.shade400,
+                  borderRadius: BorderRadius.circular(10),
+                ),
                 child: const Center(
                   child: Text("User"),
                 ),
@@ -405,10 +436,10 @@ class _ProfilePageState extends State<ProfilePage>
             physics: const NeverScrollableScrollPhysics(),
             controller: tabController,
             children: [
-              /// first tab bar view
+              /// Tab 1: Profil Admin Sendiri (Reuse komponen userContent)
               userContent(),
 
-              /// second tab bar view
+              /// Tab 2: List Manajemen User (Siswa)
               adminContent(),
             ],
           ),
@@ -417,10 +448,11 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  // Konten Profil Diri (Digunakan oleh User & Admin di tab pertama).
   RefreshIndicator userContent() {
     return RefreshIndicator(
       onRefresh: () async {
-        getSingleUser();
+        getSingleUser(); // Reload data profil
       },
       child: SingleChildScrollView(
         physics: const AlwaysScrollableScrollPhysics(),
@@ -430,10 +462,12 @@ class _ProfilePageState extends State<ProfilePage>
               return Column(
                 children: [
                   const Gap(30),
+                  // Foto Profil dengan fitur ganti foto (tap ikon kamera) dan zoom (tap foto).
                   Stack(
                     children: [
                       GestureDetector(
                         onTap: () {
+                          // Navigasi ke tampilan foto layar penuh (Hero animation).
                           context.pushNamed(
                             Routes().profilePictureFullScreen,
                             extra: state.user,
@@ -444,6 +478,7 @@ class _ProfilePageState extends State<ProfilePage>
                           child: imageLoader(),
                         ),
                       ),
+                      // Tombol Ganti Foto
                       Positioned(
                         bottom: 0,
                         right: 0,
@@ -476,6 +511,7 @@ class _ProfilePageState extends State<ProfilePage>
                     ],
                   ),
                   const Gap(20),
+                  // Form Data Profil
                   Padding(
                     padding: const EdgeInsets.all(12),
                     child: Column(
@@ -493,6 +529,7 @@ class _ProfilePageState extends State<ProfilePage>
                           controller: agencyController,
                           prefixIcon: Icons.corporate_fare,
                         ),
+                        // Field yang bisa diedit (Nama, Email, Telepon) menggunakan Popup Edit.
                         const CustomTitleTextFormField(
                             subtitle: "Nama Lengkap"),
                         CustomProfileTextFormField(
@@ -507,7 +544,7 @@ class _ProfilePageState extends State<ProfilePage>
                               fullNameController,
                               temporaryController,
                               Icons.person,
-                              () {
+                                  () {
                                 return editSingleUser();
                               },
                             );
@@ -527,7 +564,7 @@ class _ProfilePageState extends State<ProfilePage>
                               emailController,
                               temporaryController,
                               Icons.email,
-                              () {
+                                  () {
                                 return editSingleUser();
                               },
                             );
@@ -548,13 +585,14 @@ class _ProfilePageState extends State<ProfilePage>
                               phoneController,
                               temporaryController,
                               Icons.email,
-                              () {
+                                  () {
                                 return editSingleUser();
                               },
                             );
                           },
                           isEdit: true,
                         ),
+                        // Field Password khusus, navigasi ke halaman ganti password.
                         const CustomTitleTextFormField(subtitle: "Kata Sandi"),
                         CustomProfileTextFormField(
                           fieldName: "Password",
@@ -572,6 +610,7 @@ class _ProfilePageState extends State<ProfilePage>
                       ],
                     ),
                   ),
+                  // Tombol Keluar (Logout)
                   Padding(
                     padding: const EdgeInsets.all(24),
                     child: Container(
@@ -599,13 +638,13 @@ class _ProfilePageState extends State<ProfilePage>
                           splashColor: Colors.blue,
                           child: Center(
                               child: Text(
-                            "Keluar",
-                            style: GoogleFonts.openSans(
-                              color: Colors.blueAccent,
-                              fontWeight: FontWeight.bold,
-                              fontSize: 18,
-                            ),
-                          )),
+                                "Keluar",
+                                style: GoogleFonts.openSans(
+                                  color: Colors.blueAccent,
+                                  fontWeight: FontWeight.bold,
+                                  fontSize: 18,
+                                ),
+                              )),
                         ),
                       ),
                     ),
@@ -622,8 +661,9 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 
+  // Konten Daftar User (Hanya untuk Admin).
   RefreshIndicator adminContent() {
-    getALlUserByRole();
+    getALlUserByRole(); // Load data siswa
     return RefreshIndicator(
       onRefresh: () async {
         getALlUserByRole();
@@ -634,7 +674,7 @@ class _ProfilePageState extends State<ProfilePage>
           builder: (context, state) {
             if (state is GetAllUserSuccess) {
               final user = state.listUser;
-              user.sort((a, b) => a.fullName!.compareTo(b.fullName!));
+              user.sort((a, b) => a.fullName!.compareTo(b.fullName!)); // Sorting A-Z
               if (user.isNotEmpty) {
                 return Column(
                   children: [
@@ -646,6 +686,7 @@ class _ProfilePageState extends State<ProfilePage>
                         fontWeight: FontWeight.w600,
                       ),
                     ),
+                    // List User Card dengan opsi Edit, Hapus, dan Detail.
                     ListView.builder(
                       padding: const EdgeInsets.only(
                         bottom: 80,
@@ -663,15 +704,16 @@ class _ProfilePageState extends State<ProfilePage>
                           child: UserCardView(
                             user: user[index],
                             editFunction: () {
+                              // Routing edit berbeda antara Admin Sekolah dan SuperAdmin
                               roleUser == "1"
                                   ? context.pushNamed(
-                                      Routes().editUser,
-                                      extra: user[index],
-                                    )
+                                Routes().editUser,
+                                extra: user[index],
+                              )
                                   : context.pushNamed(
-                                      Routes().editUserSuperAdmin,
-                                      extra: user[index],
-                                    );
+                                Routes().editUserSuperAdmin,
+                                extra: user[index],
+                              );
                             },
                             deleteFunction: () {
                               PopUp().whenDoSomething(
@@ -716,5 +758,3 @@ class _ProfilePageState extends State<ProfilePage>
     );
   }
 }
-
-/// TODO zoom in profile picture

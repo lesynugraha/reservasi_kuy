@@ -17,6 +17,7 @@ import '../../widgets/general/pop_up.dart';
 import '../../widgets/general/widget_custom_title_text_form_field.dart';
 
 class EditExtracurricularPage extends StatefulWidget {
+  // Wajib menerima parameter objek 'excur' agar halaman ini tahu data mana yang sedang diedit.
   const EditExtracurricularPage({super.key, required this.excur});
 
   final ExtracurricularModel excur;
@@ -35,9 +36,13 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
   late ExtracurricularBloc excurBloc;
   Uint8List? imagePicked;
 
+  /// Fungsi update data dengan logika kondisional.
+  /// Memisahkan alur antara 'Ganti Gambar' dan 'Hanya Ganti Teks' untuk efisiensi upload.
   updateExcur(BuildContext context) {
     return () async {
+      // Kondisi 1: User memilih gambar baru dari galeri.
       if (imagePicked != null) {
+        // Upload gambar baru ke Storage
         final urlImage = await StoreData().uploadImageToStorage(
           "extracurricular",
           DateFormat('yyyyMMddHHmmss').format(DateTime.now()),
@@ -45,6 +50,8 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
         );
 
         if (!context.mounted) return;
+
+        // Kirim event update ke Bloc dengan URL gambar yang BARU.
         excurBloc = context.read<ExtracurricularBloc>();
         excurBloc.add(
           UpdateExtracurricular(
@@ -57,6 +64,9 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
           ),
         );
       } else {
+        // Kondisi 2: User tidak mengganti gambar.
+        // Kirim event update dengan URL gambar yang LAMA (imageController.text).
+        // Ini mencegah upload ulang yang tidak perlu (hemat kuota & waktu).
         excurBloc = context.read<ExtracurricularBloc>();
         excurBloc.add(
           UpdateExtracurricular(
@@ -72,6 +82,7 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
     };
   }
 
+  /// Mengambil gambar dari galeri lokal dan menyimpannya ke state 'imagePicked' untuk preview.
   selectImage() async {
     Uint8List img = await StoreData().pickImage(ImageSource.gallery);
     setState(() {
@@ -79,6 +90,10 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
     });
   }
 
+  /// Helper untuk menampilkan gambar.
+  /// Prioritas tampilan:
+  /// 1. Gambar Default (jika URL kosong).
+  /// 2. CachedNetworkImage (jika ada URL).
   imageLoader() {
     if (widget.excur.image! == "") {
       return const Image(
@@ -88,6 +103,7 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
         image: AssetImage(assetsDefaultBuildingImage),
       );
     } else {
+      // Menggunakan caching agar gambar tidak didownload berulang kali saat halaman direfresh.
       return CachedNetworkImage(
         height: 250,
         width: double.infinity,
@@ -111,6 +127,9 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
 
   @override
   void initState() {
+    // PRE-FILLING DATA (PENTING):
+    // Mengisi controller dengan data lama yang diambil dari 'widget.excur'.
+    // Ini memastikan user melihat data yang mau diedit, bukan form kosong.
     excurNameController = TextEditingController(text: widget.excur.name);
     descController = TextEditingController(text: widget.excur.description);
     scheduleController = TextEditingController(text: widget.excur.schedule);
@@ -120,6 +139,7 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
 
   @override
   void dispose() {
+    // Dispose controller agar memori bersih saat widget dihancurkan
     excurNameController.dispose();
     descController.dispose();
     scheduleController.dispose();
@@ -129,6 +149,7 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
 
   @override
   Widget build(BuildContext context) {
+    // BlocListener mendengarkan hasil update (Sukses/Gagal) untuk memunculkan notifikasi.
     return BlocListener<ExtracurricularBloc, ExtracurricularState>(
       listener: (context, state) {
         if (state is ExtracurricularUpdateSuccess) {
@@ -159,11 +180,14 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
                               const Gap(10),
+                              // Area Preview Gambar dengan Stack
                               Center(
                                 child: Stack(
                                   children: [
                                     Builder(
                                       builder: (context) {
+                                        // Jika user baru pilih gambar (imagePicked ada), tampilkan itu.
+                                        // Jika tidak, tampilkan gambar lama (imageLoader).
                                         if (imagePicked != null) {
                                           return Image(
                                             height: 250,
@@ -176,6 +200,7 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
                                         }
                                       },
                                     ),
+                                    // Tombol Edit Gambar (Pojok Kanan Bawah)
                                     Positioned(
                                       bottom: 0,
                                       right: 0,
@@ -204,41 +229,44 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
                                         ),
                                       ),
                                     ),
+                                    // Tombol Hapus Preview (Pojok Kanan Atas)
                                     imagePicked != null
                                         ? Positioned(
-                                            top: 0,
-                                            right: 0,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.blueAccent
-                                                    .withOpacity(0.3),
-                                              ),
-                                              child: Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      imagePicked = null;
-                                                    });
-                                                  },
-                                                  customBorder:
-                                                      const CircleBorder(),
-                                                  child: const Padding(
-                                                    padding: EdgeInsets.all(4),
-                                                    child: Icon(
-                                                      Icons.delete,
-                                                    ),
-                                                  ),
-                                                ),
+                                      top: 0,
+                                      right: 0,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.blueAccent
+                                              .withOpacity(0.3),
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                imagePicked = null;
+                                              });
+                                            },
+                                            customBorder:
+                                            const CircleBorder(),
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(4),
+                                              child: Icon(
+                                                Icons.delete,
                                               ),
                                             ),
-                                          )
+                                          ),
+                                        ),
+                                      ),
+                                    )
                                         : const SizedBox(),
                                   ],
                                 ),
                               ),
                               const Gap(10),
+
+                              // Form Input Fields
                               const CustomTitleTextFormField(
                                 subtitle: "Nama Ekstrakurikuler",
                               ),
@@ -300,6 +328,8 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
                                 ),
                               ),
                               const Gap(15),
+
+                              // Menampilkan pesan error jika proses update di Bloc gagal
                               BlocBuilder<ExtracurricularBloc,
                                   ExtracurricularState>(
                                 builder: (context, state) {
@@ -317,6 +347,8 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
                                 },
                               ),
                               const Gap(15),
+
+                              // Tombol Simpan
                               Align(
                                 alignment: Alignment.bottomRight,
                                 child: Container(
@@ -328,6 +360,7 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
                                     color: Colors.transparent,
                                     child: InkWell(
                                       onTap: () {
+                                        // Validasi form sebelum eksekusi logic
                                         if (_formKey.currentState!.validate()) {
                                           PopUp().whenDoSomething(
                                             context,
@@ -359,6 +392,8 @@ class _EditExtracurricularPageState extends State<EditExtracurricularPage> {
                       ),
                     ),
                   ),
+
+                  // Loading Indicator Overlay (memblokir interaksi saat loading)
                   BlocBuilder<ExtracurricularBloc, ExtracurricularState>(
                     builder: (context, state) {
                       if (state is ExtracurricularLoading) {

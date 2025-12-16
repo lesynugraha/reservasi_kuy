@@ -6,6 +6,8 @@ import 'package:reservation_app/src/presentation/widgets/general/button_positive
 import '../../../data/model/building_model.dart';
 import '../../utils/constant/constant.dart';
 
+// Widget Item List yang menampilkan gedung yang TERSEDIA (Available) untuk direservasi.
+// Memisahkan UI item dari logic halaman utama (ReservationPage) agar kode lebih modular.
 class BuildingAvailableCardView extends StatelessWidget {
   const BuildingAvailableCardView({
     super.key,
@@ -14,8 +16,12 @@ class BuildingAvailableCardView extends StatelessWidget {
   });
 
   final BuildingModel building;
+
+  // Callback fungsi yang akan dieksekusi saat tombol "Reservasi" ditekan.
+  // Logika reservasi (pindah halaman/submit data) tetap berada di parent widget.
   final VoidCallback function;
 
+  // Helper untuk manajemen gambar (Network vs Asset).
   imageLoader() {
     if (building.image == "") {
       return Container(
@@ -44,6 +50,7 @@ class BuildingAvailableCardView extends StatelessWidget {
           padding: const EdgeInsets.all(8.0),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(10),
+            // Menggunakan CachedNetworkImage untuk optimasi performa list.
             child: CachedNetworkImage(
               height: 100,
               width: 100,
@@ -79,6 +86,9 @@ class BuildingAvailableCardView extends StatelessWidget {
         ),
         borderRadius: BorderRadius.circular(10),
       ),
+      // IntrinsicHeight sangat penting di sini.
+      // Gunanya agar tinggi widget 'Row' (gambar + teks) dan widget 'Column' di dalamnya
+      // menyesuaikan dengan anak yang paling tinggi. Tanpa ini, layout bisa error atau tidak presisi.
       child: IntrinsicHeight(
         child: Column(
           children: [
@@ -87,6 +97,7 @@ class BuildingAvailableCardView extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   imageLoader(),
+                  // Expanded memastikan kolom teks mengambil sisa lebar yang tersedia di sebelah gambar.
                   Expanded(
                     child: Padding(
                       padding: const EdgeInsets.all(8.0),
@@ -135,13 +146,14 @@ class BuildingAvailableCardView extends StatelessWidget {
                 ],
               ),
             ),
+            // Tombol Reservasi di bagian bawah kartu
             Padding(
               padding: const EdgeInsets.all(8.0),
               child: Align(
                 alignment: Alignment.bottomRight,
                 child: ButtonPositive(
                   name: "Reservasi",
-                  function: function,
+                  function: function, // Memicu callback navigasi ke halaman konfirmasi
                 ),
               ),
             )

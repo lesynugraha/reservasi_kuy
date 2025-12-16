@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:reservation_app/src/data/model/extracurricular_model.dart';
 import 'package:reservation_app/src/presentation/utils/constant/constant.dart';
 
+// Widget kartu (Card) untuk menampilkan item ekstrakurikuler di halaman list utama.
+// Dibuat reusable (bisa dipakai berulang) dan stateless karena data dikontrol oleh parent.
 class ExtracurricularCardView extends StatelessWidget {
   const ExtracurricularCardView({
     super.key,
@@ -16,14 +18,22 @@ class ExtracurricularCardView extends StatelessWidget {
   });
 
   final ExtracurricularModel excur;
+
+  // Callback functions untuk meneruskan aksi tap ke parent widget.
+  // Ini menjaga agar logic navigasi/hapus tetap terpusat di Page, bukan di Widget kecil ini.
   final VoidCallback editFunction;
   final VoidCallback deleteFunction;
   final VoidCallback detailFunction;
+
+  // Variabel role untuk menentukan apakah tombol Edit/Hapus perlu ditampilkan atau tidak.
   final String role;
 
   @override
   Widget build(BuildContext context) {
     return Container(
+      // Tinggi kartu dinamis:
+      // Jika Admin (role == "1") -> 140 (butuh space untuk tombol aksi).
+      // Jika User -> 110 (cukup info saja).
       height: role == "1" ? 140 : 110,
       width: double.infinity,
       decoration: BoxDecoration(
@@ -39,7 +49,7 @@ class ExtracurricularCardView extends StatelessWidget {
             child: Row(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                imageLoader(),
+                imageLoader(), // Memanggil helper untuk load gambar
                 Expanded(
                   child: Padding(
                     padding: const EdgeInsets.all(8.0),
@@ -50,7 +60,7 @@ class ExtracurricularCardView extends StatelessWidget {
                         Text(
                           excur.name!,
                           maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                          overflow: TextOverflow.ellipsis, // Potong teks jika terlalu panjang
                           style: GoogleFonts.openSans(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -69,6 +79,7 @@ class ExtracurricularCardView extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Tombol Panah Detail
                 SizedBox(
                   height: double.maxFinite,
                   child: Material(
@@ -92,12 +103,17 @@ class ExtracurricularCardView extends StatelessWidget {
               ],
             ),
           ),
+          // Bagian bawah kartu yang berisi tombol Edit & Delete (Khusus Admin)
           adminBehavior(role),
         ],
       ),
     );
   }
 
+  // Fungsi helper untuk manajemen gambar.
+  // 1. Cek apakah ada URL gambar.
+  // 2. Jika ada, gunakan CachedNetworkImage untuk efisiensi bandwidth & memori.
+  // 3. Jika tidak, tampilkan gambar default (placeholder).
   imageLoader() {
     if (excur.image == "") {
       return Container(
@@ -151,6 +167,9 @@ class ExtracurricularCardView extends StatelessWidget {
     }
   }
 
+  // Logika tampilan berdasarkan Role.
+  // Hanya merender tombol aksi (Edit & Delete) jika user adalah SuperAdmin ("1").
+  // Jika bukan, return SizedBox() agar tidak memakan tempat di layout.
   adminBehavior(String role) {
     if (role == "1") {
       return Column(
@@ -164,6 +183,7 @@ class ExtracurricularCardView extends StatelessWidget {
             child: Row(
               mainAxisAlignment: MainAxisAlignment.end,
               children: [
+                // Tombol Edit
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),
@@ -184,6 +204,7 @@ class ExtracurricularCardView extends StatelessWidget {
                   ),
                 ),
                 const Gap(8),
+                // Tombol Delete
                 Container(
                   decoration: BoxDecoration(
                     borderRadius: BorderRadius.circular(10),

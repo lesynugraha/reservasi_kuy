@@ -6,6 +6,8 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../data/model/building_model.dart';
 import '../../utils/constant/constant.dart';
 
+// Widget ini dibuat Stateless karena hanya bertugas menampilkan data (Presentational Widget).
+// Tidak ada perubahan state internal di sini, semua data dan fungsi dilempar dari parent (BuildingPage).
 class BuildingCardView extends StatelessWidget {
   const BuildingCardView({
     super.key,
@@ -17,6 +19,8 @@ class BuildingCardView extends StatelessWidget {
   });
 
   final BuildingModel building;
+  // Menggunakan callback (VoidCallback) agar logika navigasi dan penghapusan tetap berada di parent widget.
+  // Ini menerapkan prinsip 'Separation of Concerns', jadi widget ini murni untuk UI saja.
   final VoidCallback detailFunction;
   final VoidCallback editFunction;
   final VoidCallback deleteFunction;
@@ -25,6 +29,9 @@ class BuildingCardView extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
+      // Tinggi container dibuat dinamis.
+      // Jika user adalah SuperAdmin (role == "1"), tinggi 140 agar muat tombol Edit/Hapus di bawah.
+      // Jika User biasa, cukup 110.
       height: role == "1" ? 140 : 110,
       decoration: BoxDecoration(
         border: Border.all(
@@ -49,7 +56,7 @@ class BuildingCardView extends StatelessWidget {
                         Text(
                           building.name!,
                           maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
+                          overflow: TextOverflow.ellipsis, // Potong teks jika kepanjangan
                           style: GoogleFonts.openSans(
                             fontWeight: FontWeight.bold,
                             fontSize: 14,
@@ -75,10 +82,12 @@ class BuildingCardView extends StatelessWidget {
                     ),
                   ),
                 ),
+                // Tombol panah detail (Chevron)
                 SizedBox(
                   height: double.maxFinite,
                   child: Material(
                     color: Colors.transparent,
+                    // Menggunakan InkWell untuk memberikan efek visual 'ripple' saat ditekan (UX Feedback).
                     child: InkWell(
                       onTap: detailFunction,
                       borderRadius: const BorderRadius.only(
@@ -98,12 +107,16 @@ class BuildingCardView extends StatelessWidget {
               ],
             ),
           ),
+          // Bagian tombol aksi Admin (Edit & Delete) yang dipisahkan ke fungsi sendiri.
           adminBehavior(role),
         ],
       ),
     );
   }
 
+  // Fungsi helper untuk menangani logika tampilan gambar:
+  // 1. Gambar kosong -> Tampilkan default asset.
+  // 2. Gambar ada -> Gunakan CachedNetworkImage untuk efisiensi memori & kuota.
   imageLoader() {
     if (building.image == "") {
       return Container(
@@ -157,6 +170,9 @@ class BuildingCardView extends StatelessWidget {
     }
   }
 
+  // Logika kontrol akses UI (Role-Based UI).
+  // Tombol Edit dan Hapus hanya dirender jika role user adalah "1" (SuperAdmin).
+  // User biasa tidak akan melihat tombol ini sama sekali (return SizedBox/Kosong).
   adminBehavior(String role) {
     if (role == "1") {
       return Column(
@@ -177,7 +193,7 @@ class BuildingCardView extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: editFunction,
+                      onTap: editFunction, // Callback edit dipanggil
                       borderRadius: BorderRadius.circular(10),
                       child: const Padding(
                         padding: EdgeInsets.all(4),
@@ -197,7 +213,7 @@ class BuildingCardView extends StatelessWidget {
                   child: Material(
                     color: Colors.transparent,
                     child: InkWell(
-                      onTap: deleteFunction,
+                      onTap: deleteFunction, // Callback delete dipanggil
                       borderRadius: BorderRadius.circular(10),
                       child: const Padding(
                         padding: EdgeInsets.all(4),
@@ -215,6 +231,7 @@ class BuildingCardView extends StatelessWidget {
         ],
       );
     } else {
+      // Jika bukan admin, render kotak kosong agar layout tidak berantakan.
       return const SizedBox();
     }
   }

@@ -17,23 +17,26 @@ import 'package:firebase_messaging/firebase_messaging.dart';
 import 'package:flutter/foundation.dart';
 
 class NotificationServices {
+  // Menggunakan instance Singleton dari FirebaseMessaging.
   final _firebaseMessaging = FirebaseMessaging.instance;
 
+  // Fungsi inisialisasi awal untuk meminta izin notifikasi (penting untuk Android 13+).
   initialMessaging() async {
     try {
       await _firebaseMessaging.requestPermission();
-      // await _firebaseMessaging.getToken(); //tidak panggil otomatis di sini
+      // Token tidak diambil otomatis di sini untuk menghemat resource, diambil saat dibutuhkan saja.
     } catch (e) {
       throw Exception(e);
     }
   }
 
-  // vvv FUNGSI BARU YANG DITAMBAHKAN DI SINI vvv
+  // Fungsi untuk mendapatkan Device Token (FCM Token).
+  // Token ini unik untuk setiap perangkat dan digunakan backend untuk mengirim notifikasi ke user spesifik.
   Future<String?> getDeviceToken() async {
     try {
       String? token = await _firebaseMessaging.getToken();
       if (kDebugMode) {
-        // ditambahkan "=====" agar mudah dicari di log/terminal
+        // Print token di mode debug untuk keperluan testing via Firebase Console.
         print("===== FCM Token: $token =====");
       }
       return token;

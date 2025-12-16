@@ -31,57 +31,84 @@ import '../../pages/reservation/reservation.dart';
 import '../../pages/splash/splash.dart';
 import 'route_name.dart';
 
-//User
+// ============================================================================
+// KONFIGURASI NAVIGATOR KEY
+// ============================================================================
+// GlobalKey ini penting agar setiap tab pada Bottom Navigation Bar memiliki
+// state navigatornya sendiri. Artinya, jika user masuk dalam ke menu di Tab A,
+// lalu pindah ke Tab B, saat kembali ke Tab A posisinya masih sama (tidak reset).
+
+// Keys untuk Role: User
 final _navigatorHome = GlobalKey<NavigatorState>();
 final _navigatorBuilding = GlobalKey<NavigatorState>();
 final _navigatorReservation = GlobalKey<NavigatorState>();
 final _navigatorHistory = GlobalKey<NavigatorState>();
 final _navigatorProfile = GlobalKey<NavigatorState>();
 
-//Admin
+// Keys untuk Role: Admin (Supervisor)
 final _navigatorHomeAdmin = GlobalKey<NavigatorState>();
 final _navigatorBuildingAdmin = GlobalKey<NavigatorState>();
 final _navigatorReportAdmin = GlobalKey<NavigatorState>();
 final _navigatorProfileAdmin = GlobalKey<NavigatorState>();
 
-//Super Admin
+// Keys untuk Role: Super Admin
 final _navigatorHomeSuperAdmin = GlobalKey<NavigatorState>();
 final _navigatorProfileSuperAdmin = GlobalKey<NavigatorState>();
 
+// ============================================================================
+// DEFINISI ROUTING UTAMA (GoRouter)
+// ============================================================================
 final GoRouter routeApp = GoRouter(
   routes: <RouteBase>[
-    /// without base route
+
+    // --- RUTE UMUM (Tanpa Bottom Nav Bar) ---
+    // Rute ini berada di level paling atas (root), sehingga ketika dibuka,
+    // Bottom Navigation Bar akan tertutup/hilang.
+
+    /// Halaman pertama kali aplikasi dibuka (Splash Screen)
     GoRoute(
       path: '/',
       builder: (context, state) => const SplashScreen(),
     ),
+
+    /// Halaman Login
     GoRoute(
       path: '/login',
       name: Routes().login,
       builder: (context, state) => const LoginPage(),
     ),
+
+    /// Halaman Edit Password
     GoRoute(
       path: '/editPassword',
       name: Routes().editPassword,
+      // onExit: Logic untuk refresh data saat user menekan tombol back.
+      // Di sini kita memanggil UserBloc untuk mengambil data user terbaru.
       onExit: (context, state) {
         BlocProvider.of<UserBloc>(context).add(GetUserLoggedIn());
-        return true;
+        return true; // true artinya boleh keluar dari halaman ini
       },
       builder: (context, state) {
+        // Mengambil data object UserModel yang dikirim dari halaman sebelumnya
         return EditPasswordPage(
           userModel: state.extra as UserModel,
         );
       },
     ),
+
+    /// Halaman Detail Gedung
     GoRoute(
       path: '/detailBuilding',
       name: Routes().detailBuilding,
       builder: (context, state) {
+        // Menerima parameter object BuildingModel
         return DetailBuilding(
           building: state.extra as BuildingModel,
         );
       },
     ),
+
+    /// Halaman Detail Ekstrakurikuler
     GoRoute(
       path: '/detailExtracurricular',
       name: Routes().detailExtracurricular,
@@ -91,6 +118,8 @@ final GoRouter routeApp = GoRouter(
         );
       },
     ),
+
+    /// Halaman Foto Profil Full Screen
     GoRoute(
       path: '/profilePictureFullScreen',
       name: Routes().profilePictureFullScreen,
@@ -101,14 +130,22 @@ final GoRouter routeApp = GoRouter(
       },
     ),
 
-    ///Navigation bottom bar for User
+    // ========================================================================
+    // STRUKTUR BOTTOM NAVIGATION BAR (SHELL ROUTE)
+    // ========================================================================
+    // StatefulShellRoute digunakan agar Bottom Navigation Bar tetap muncul
+    // dan menjaga state (posisi scroll/halaman) dari setiap tab.
+
+    /// 1. Navigation Bottom Bar untuk USER
     StatefulShellRoute.indexedStack(
+      // Builder ini membungkus halaman-halaman di bawahnya dengan BotNavBar
       builder: (context, state, navigationShell) {
         return BotNavBar(
           navigationShell: navigationShell,
         );
       },
       branches: <StatefulShellBranch>[
+        // Tab 1: Home
         StatefulShellBranch(
           navigatorKey: _navigatorHome,
           routes: <RouteBase>[
@@ -121,6 +158,7 @@ final GoRouter routeApp = GoRouter(
             ),
           ],
         ),
+        // Tab 2: Building (Daftar Gedung)
         StatefulShellBranch(
           navigatorKey: _navigatorBuilding,
           routes: <RouteBase>[
@@ -133,6 +171,7 @@ final GoRouter routeApp = GoRouter(
             ),
           ],
         ),
+        // Tab 3: Reservation (Peminjaman)
         StatefulShellBranch(
           navigatorKey: _navigatorReservation,
           routes: <RouteBase>[
@@ -142,15 +181,18 @@ final GoRouter routeApp = GoRouter(
                 builder: (context, state) {
                   return const ReservationPage();
                 },
+                // Sub-route: Konfirmasi Reservasi
                 routes: [
                   GoRoute(
                     path: 'confirmReservation',
                     name: Routes().confirmReservation,
                     builder: (context, state) {
+                      // Mengambil parameter building (object) dan query params (string tanggal)
+                      // Contoh URL: /reservation/confirmReservation?dateStart=2025-12-01&dateEnd=...
                       return ConfirmReservationPage(
                         building: state.extra as BuildingModel,
                         dateStart:
-                            state.uri.queryParameters["dateStart"] as String,
+                        state.uri.queryParameters["dateStart"] as String,
                         dateEnd: state.uri.queryParameters["dateEnd"] as String,
                       );
                     },
@@ -158,6 +200,7 @@ final GoRouter routeApp = GoRouter(
                 ]),
           ],
         ),
+        // Tab 4: History (Riwayat)
         StatefulShellBranch(
           navigatorKey: _navigatorHistory,
           routes: <RouteBase>[
@@ -170,6 +213,7 @@ final GoRouter routeApp = GoRouter(
             ),
           ],
         ),
+        // Tab 5: Profile
         StatefulShellBranch(
           navigatorKey: _navigatorProfile,
           routes: <RouteBase>[
@@ -185,7 +229,7 @@ final GoRouter routeApp = GoRouter(
       ],
     ),
 
-    ///Navigation bottom bar for Admin
+    /// 2. Navigation Bottom Bar untuk ADMIN (Supervisor)
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return BotNavBar(
@@ -193,6 +237,7 @@ final GoRouter routeApp = GoRouter(
         );
       },
       branches: <StatefulShellBranch>[
+        // Tab Admin 1: Home
         StatefulShellBranch(
           navigatorKey: _navigatorHomeAdmin,
           routes: <RouteBase>[
@@ -205,6 +250,7 @@ final GoRouter routeApp = GoRouter(
             ),
           ],
         ),
+        // Tab Admin 2: Building Management (CRUD Gedung & Eskul)
         StatefulShellBranch(
           navigatorKey: _navigatorBuildingAdmin,
           routes: <RouteBase>[
@@ -215,18 +261,21 @@ final GoRouter routeApp = GoRouter(
                 return const BuildingPage();
               },
               routes: [
+                // Sub-route: Tambah Gedung
                 GoRoute(
                   path: 'createBuilding',
                   name: Routes().createBuilding,
                   builder: (context, state) {
                     return const AddBuildingPage();
                   },
+                  // Refresh list gedung saat kembali dari halaman tambah
                   onExit: (context, state) {
                     BlocProvider.of<BuildingBloc>(context)
                         .add(GetBuildingByAgency());
                     return true;
                   },
                   routes: [
+                    // Nested Sub-route: Edit Gedung
                     GoRoute(
                       path: 'editBuilding',
                       name: Routes().editBuilding,
@@ -235,6 +284,7 @@ final GoRouter routeApp = GoRouter(
                           building: state.extra as BuildingModel,
                         );
                       },
+                      // Refresh list gedung saat kembali dari halaman edit
                       onExit: (context, state) {
                         BlocProvider.of<BuildingBloc>(context)
                             .add(GetBuildingByAgency());
@@ -243,6 +293,7 @@ final GoRouter routeApp = GoRouter(
                     ),
                   ],
                 ),
+                // Sub-route: Tambah Ekstrakurikuler
                 GoRoute(
                   path: 'createExtracurricular',
                   name: Routes().createExtracurricular,
@@ -255,6 +306,7 @@ final GoRouter routeApp = GoRouter(
                     return true;
                   },
                   routes: [
+                    // Nested Sub-route: Edit Ekstrakurikuler
                     GoRoute(
                       path: 'editExtracurricular',
                       name: Routes().editExtracurricular,
@@ -275,6 +327,7 @@ final GoRouter routeApp = GoRouter(
             ),
           ],
         ),
+        // Tab Admin 3: Report (Laporan/Riwayat)
         StatefulShellBranch(
           navigatorKey: _navigatorReportAdmin,
           routes: <RouteBase>[
@@ -287,6 +340,7 @@ final GoRouter routeApp = GoRouter(
             ),
           ],
         ),
+        // Tab Admin 4: Profile & User Management
         StatefulShellBranch(
           navigatorKey: _navigatorProfileAdmin,
           routes: <RouteBase>[
@@ -315,6 +369,7 @@ final GoRouter routeApp = GoRouter(
                     );
                   },
                   onExit: (context, state) {
+                    // Refresh data user admin saat selesai edit
                     BlocProvider.of<RegisterBloc>(context)
                         .add(GetAllUserAdmin());
                     return true;
@@ -336,7 +391,7 @@ final GoRouter routeApp = GoRouter(
       ],
     ),
 
-    ///Navigation bottom bar for Super Admin
+    /// 3. Navigation Bottom Bar untuk SUPER ADMIN
     StatefulShellRoute.indexedStack(
       builder: (context, state, navigationShell) {
         return BotNavBar(
@@ -344,6 +399,7 @@ final GoRouter routeApp = GoRouter(
         );
       },
       branches: <StatefulShellBranch>[
+        // Tab Super Admin 1: Home (Management User)
         StatefulShellBranch(
           navigatorKey: _navigatorHomeSuperAdmin,
           routes: <RouteBase>[
@@ -372,6 +428,7 @@ final GoRouter routeApp = GoRouter(
                     );
                   },
                   onExit: (context, state) {
+                    // Refresh list semua user saat kembali
                     BlocProvider.of<RegisterBloc>(context)
                         .add(GetAllUserSuperAdmin());
                     return true;
@@ -390,6 +447,7 @@ final GoRouter routeApp = GoRouter(
             ),
           ],
         ),
+        // Tab Super Admin 2: Profile
         StatefulShellBranch(
           navigatorKey: _navigatorProfileSuperAdmin,
           routes: <RouteBase>[

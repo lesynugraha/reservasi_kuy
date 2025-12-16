@@ -22,27 +22,35 @@ class BuildingPage extends StatefulWidget {
   State<BuildingPage> createState() => _BuildingPageState();
 }
 
+// Saya menggunakan TickerProviderStateMixin karena halaman ini punya TabController kustom.
+// Mixin ini wajib ada kalau kita bikin TabController secara manual (bukan cuma pakai DefaultTabController).
 class _BuildingPageState extends State<BuildingPage>
     with TickerProviderStateMixin {
+
   late BuildingBloc buildingBloc;
   late ExtracurricularBloc excurBloc;
   late String roleUser;
+
+  // Controller ini penting banget buat handle perpindahan tab (Gedung <-> Ekskul).
+  // Saya perlu akses variabel ini buat tahu user lagi di tab mana (index berapa),
+  // supaya tombol tambahnya (FAB) bisa berubah fungsi sesuai tab yang aktif.
   late TabController tabController;
   int selectedIndex = 0;
 
-  /// mendapatkan informasi gedung
+  /// Trigger event ke Bloc untuk ambil data gedung dari Firebase.
   getBuilding() {
     buildingBloc = context.read<BuildingBloc>();
     buildingBloc.add(GetBuildingByAgency());
   }
 
-  /// mendapatkan ekstrakurikuler
+  /// Trigger event ke Bloc untuk ambil data ekskul.
   getExtracurricular() {
     excurBloc = context.read<ExtracurricularBloc>();
     excurBloc.add(GetExtracurricular());
   }
 
-  /// mendapatkan role pengguna
+  /// Cek role user dari Local Storage (SharedPreferences).
+  /// Ini krusial buat security UI: Tombol "Tambah/Hapus" cuma muncul kalau role-nya '1' (SuperAdmin).
   getRole() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     roleUser = prefs.getString("role")!;
@@ -51,7 +59,7 @@ class _BuildingPageState extends State<BuildingPage>
     });
   }
 
-  /// menghapus ekstrakurikuler
+  /// Fungsi hapus ekskul yang di-pass ke widget card.
   deleteExcur(String id) {
     return () {
       excurBloc = context.read<ExtracurricularBloc>();
@@ -59,7 +67,7 @@ class _BuildingPageState extends State<BuildingPage>
     };
   }
 
-  /// menghapus gedung
+  /// Fungsi hapus gedung.
   deleteBuilding(String id) {
     return () {
       buildingBloc = context.read<BuildingBloc>();
@@ -69,10 +77,14 @@ class _BuildingPageState extends State<BuildingPage>
 
   @override
   void didChangeDependencies() {
+    // Inisialisasi data awal saat halaman pertama kali dibangun.
     roleUser = "";
     getRole();
     getBuilding();
     getExtracurricular();
+
+    // Inisialisasi TabController untuk 2 tab.
+    // 'vsync: this' butuh TickerProviderStateMixin di atas.
     tabController = TabController(
       length: 2,
       vsync: this,
@@ -82,6 +94,7 @@ class _BuildingPageState extends State<BuildingPage>
 
   @override
   void dispose() {
+    // Wajib dispose tabController buat mencegah memory leak kalau halaman ditutup.
     tabController.dispose();
     super.dispose();
   }
@@ -91,6 +104,8 @@ class _BuildingPageState extends State<BuildingPage>
     return DefaultTabController(
       length: 2,
       child: Scaffold(
+        // Floating Action Button (FAB) dipisah ke fungsi customFAB()
+        // biar kodenya bersih dan logic-nya terisolasi.
         floatingActionButton: customFAB(),
         body: Stack(
           children: [
@@ -100,8 +115,11 @@ class _BuildingPageState extends State<BuildingPage>
                   name: "Gedung & Ekstrakurikuler",
                 ),
                 const Gap(10),
+                // TabBar untuk navigasi Gedung vs Ekskul
                 TabBar(
                   controller: tabController,
+                  // Logic onTap: Setiap kali tab dipencet, saya update 'selectedIndex'.
+                  // Ini memicu rebuild UI supaya tombol FAB berubah sesuai tab yang dipilih.
                   onTap: (index) {
                     setState(() {
                       selectedIndex = index;
@@ -116,37 +134,40 @@ class _BuildingPageState extends State<BuildingPage>
                   dividerColor: Colors.transparent,
                   splashFactory: NoSplash.splashFactory,
                   tabs: [
+                    // Tab 1: Gedung
                     Tab(
                       child: Container(
                         width: double.maxFinite,
                         height: 40,
+                        // Logic warna tombol tab aktif/non-aktif
                         decoration: selectedIndex == 0
                             ? BoxDecoration(
-                                color: Colors.blueAccent.shade400,
-                                borderRadius: BorderRadius.circular(10),
-                              )
+                          color: Colors.blueAccent.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        )
                             : BoxDecoration(
-                                color: Colors.grey.shade400,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: const Center(
                           child: Text("Gedung"),
                         ),
                       ),
                     ),
+                    // Tab 2: Jadwal Ekskul
                     Tab(
                       child: Container(
                         width: double.maxFinite,
                         height: 40,
                         decoration: selectedIndex == 1
                             ? BoxDecoration(
-                                color: Colors.blueAccent.shade400,
-                                borderRadius: BorderRadius.circular(10),
-                              )
+                          color: Colors.blueAccent.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        )
                             : BoxDecoration(
-                                color: Colors.grey.shade400,
-                                borderRadius: BorderRadius.circular(10),
-                              ),
+                          color: Colors.grey.shade400,
+                          borderRadius: BorderRadius.circular(10),
+                        ),
                         child: const Center(
                           child: Text("Jadwal Ekskul"),
                         ),
@@ -159,16 +180,18 @@ class _BuildingPageState extends State<BuildingPage>
                     physics: const NeverScrollableScrollPhysics(),
                     controller: tabController,
                     children: [
-                      /// first tab bar view
+                      /// View 1: List Gedung
                       buildingContent(),
 
-                      /// second tab bar view
+                      /// View 2: List Ekskul
                       extracurricularContent(),
                     ],
                   ),
                 ),
               ],
             ),
+
+            // Overlay Loading: Muncul di tengah layar kalau Bloc sedang loading data Gedung
             Center(
               child: BlocBuilder<BuildingBloc, BuildingState>(
                 builder: (context, state) {
@@ -179,6 +202,7 @@ class _BuildingPageState extends State<BuildingPage>
                 },
               ),
             ),
+            // Overlay Loading: Muncul kalau Bloc sedang loading data Ekskul
             Center(
               child: BlocBuilder<ExtracurricularBloc, ExtracurricularState>(
                 builder: (context, state) {
@@ -195,9 +219,11 @@ class _BuildingPageState extends State<BuildingPage>
     );
   }
 
+  // Widget konten untuk Tab Gedung
   BlocListener buildingContent() {
     return BlocListener<BuildingBloc, BuildingState>(
       listener: (context, state) {
+        // Listener cuma buat nampilin notifikasi sukses hapus, bukan buat render UI.
         if (state is BuildingDeleteSuccess) {
           PopUp().whenSuccessDoSomething(
             context,
@@ -207,6 +233,7 @@ class _BuildingPageState extends State<BuildingPage>
         }
       },
       child: RefreshIndicator(
+        // Fitur Pull-to-Refresh: User bisa tarik layar buat reload data terbaru.
         onRefresh: () async {
           getBuilding();
         },
@@ -216,7 +243,9 @@ class _BuildingPageState extends State<BuildingPage>
             builder: (context, state) {
               if (state is BuildingGetSuccess) {
                 final buildings = state.buildings;
+                // Sorting nama gedung A-Z biar user gampang nyarinya.
                 buildings.sort((a, b) => a.name!.compareTo(b.name!));
+
                 if (buildings.isNotEmpty) {
                   return Column(
                     children: [
@@ -228,6 +257,7 @@ class _BuildingPageState extends State<BuildingPage>
                           fontWeight: FontWeight.w600,
                         ),
                       ),
+                      // ListView.builder efisien buat list panjang karena item dirender pas discroll aja (Lazy Loading).
                       ListView.builder(
                         padding: const EdgeInsets.only(
                           bottom: 80,
@@ -244,12 +274,14 @@ class _BuildingPageState extends State<BuildingPage>
                             ),
                             child: BuildingCardView(
                               building: buildings[index],
+                              // Navigasi ke Edit
                               editFunction: () {
                                 context.pushNamed(
                                   Routes().editBuilding,
                                   extra: buildings[index],
                                 );
                               },
+                              // Navigasi ke Hapus (panggil fungsi deleteBuilding)
                               deleteFunction: () {
                                 PopUp().whenDoSomething(
                                     context,
@@ -259,6 +291,7 @@ class _BuildingPageState extends State<BuildingPage>
                                       buildings[index].id!,
                                     ));
                               },
+                              // Navigasi ke Detail
                               detailFunction: () {
                                 context.pushNamed(
                                   Routes().detailBuilding,
@@ -273,6 +306,7 @@ class _BuildingPageState extends State<BuildingPage>
                     ],
                   );
                 } else {
+                  // State Empty: Tampilan kalau data kosong
                   return Column(
                     children: [
                       const Gap(30),
@@ -296,6 +330,7 @@ class _BuildingPageState extends State<BuildingPage>
     );
   }
 
+  // Widget konten untuk Tab Ekskul (Strukturnya mirip sama buildingContent)
   BlocListener extracurricularContent() {
     return BlocListener<ExtracurricularBloc, ExtracurricularState>(
       listener: (context, state) {
@@ -396,6 +431,10 @@ class _BuildingPageState extends State<BuildingPage>
     );
   }
 
+  // Logic FAB Dinamis: Ini fitur penting buat UX.
+  // 1. Cek Role: Cuma 'SuperAdmin' (role == "1") yang boleh lihat tombol ini.
+  // 2. Cek Tab: Kalau lagi di tab Gedung (index 0) -> Buka halaman Tambah Gedung.
+  //             Kalau lagi di tab Ekskul (index 1) -> Buka halaman Tambah Ekskul.
   customFAB() {
     if (roleUser == "1") {
       if (selectedIndex == 0) {
@@ -418,6 +457,7 @@ class _BuildingPageState extends State<BuildingPage>
         );
       }
     } else {
+      // Kalau user biasa, return SizedBox (alias gak nampilin apa-apa).
       return const SizedBox();
     }
   }

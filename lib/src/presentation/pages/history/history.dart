@@ -23,33 +23,39 @@ class HistoryPage extends StatefulWidget {
 class _HistoryPageState extends State<HistoryPage> {
   late HistoryBloc _historyBloc;
   late String userRole;
+
+  // Variabel state untuk menyimpan filter yang dipilih user (Default: Semua).
   String titleFilter = "Semua Laporan";
+  // Variabel untuk menyimpan bulan yang dipilih dari MonthPicker.
   DateTime? selectedDate;
 
-  /// user: mendapatkan informasi riwayat
+  /// Fetch data untuk Role User (Siswa/Organisasi):
+  /// Hanya mengambil data riwayat reservasi milik user itu sendiri.
   _getHistory() {
     _historyBloc = context.read<HistoryBloc>();
     _historyBloc.add(GetHistoryUser());
   }
 
-  /// admin: mendapatkan informasi laporan
+  /// Fetch data untuk Role Admin (Sekolah):
+  /// Mengambil SEMUA laporan reservasi dari seluruh user untuk keperluan monitoring.
   _getReport() {
     _historyBloc = context.read<HistoryBloc>();
     _historyBloc.add(GetReportAdmin());
   }
 
-  /// umum: mendapatkan informasi laporan riwayat reservasi
+  /// Logika pembagian fungsi fetch data berdasarkan Role yang login.
+  /// Memastikan User tidak bisa intip data Admin, dan sebaliknya Admin bisa lihat semua.
   getHistoryReport() {
-    if (userRole == "1") {
+    if (userRole == "1") { // Role 1 = Admin/Supervisor
       return _getReport();
-    } else if (userRole == "2") {
+    } else if (userRole == "2") { // Role 2 = User
       return _getHistory();
     } else {
       return () {};
     }
   }
 
-  /// umum: mendapatkan informasi role
+  /// Mengambil Role dari SharedPreferences (Local Storage) untuk penyesuaian UI.
   getRole() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     userRole = prefs.getString("role")!;
@@ -60,14 +66,16 @@ class _HistoryPageState extends State<HistoryPage> {
 
   @override
   void didChangeDependencies() {
+    // Inisialisasi awal saat halaman dibuka
     userRole = "";
     getRole();
-    selectedDate = DateTime.now();
+    selectedDate = DateTime.now(); // Default tanggal filter adalah hari ini
     super.didChangeDependencies();
   }
 
   @override
   Widget build(BuildContext context) {
+    // Memanggil fungsi fetch data setiap kali build (bisa dioptimasi ke initState/didChangeDependencies sebenarnya)
     getHistoryReport();
     return Scaffold(
       body: Center(
@@ -75,11 +83,12 @@ class _HistoryPageState extends State<HistoryPage> {
           children: [
             Column(
               children: [
+                // Header dinamis (Judul beda antara User & Admin)
                 headerPage(),
                 Expanded(
                   child: RefreshIndicator(
                     onRefresh: () async {
-                      getHistoryReport();
+                      getHistoryReport(); // Fitur Pull-to-Refresh
                     },
                     child: SingleChildScrollView(
                         physics: const AlwaysScrollableScrollPhysics(),
@@ -93,12 +102,16 @@ class _HistoryPageState extends State<HistoryPage> {
                                     final histories = state.histories;
                                     if (histories.isNotEmpty) {
                                       return Column(children: [
+                                        // Widget Filter (Dropdown & DatePicker)
                                         buttonFilter(histories),
+
+                                        // Menampilkan List jika hasil filter tidak kosong
                                         _historiesFiltered(histories).isNotEmpty
                                             ? groupedListView(histories)
                                             : isEmptyText(),
                                       ]);
                                     } else {
+                                      // Tampilan jika data kosong sama sekali
                                       return isEmptyText();
                                     }
                                   } else {
@@ -113,6 +126,7 @@ class _HistoryPageState extends State<HistoryPage> {
                 ),
               ],
             ),
+            // Loading Overlay
             Center(
               child: BlocBuilder<HistoryBloc, HistoryState>(
                 builder: (context, state) {
@@ -129,11 +143,13 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  // Widget Month Picker: Dialog khusus untuk memilih Bulan & Tahun.
+  // Lebih relevan untuk laporan bulanan dibanding DatePicker biasa yang per tanggal.
   Future<void> monthPicker(BuildContext contexto) async {
     return await showMonthPicker(
       context: contexto,
-      firstDate: DateTime(DateTime.now().year - 2, 5),
-      lastDate: DateTime(DateTime.now().year + 2, 9),
+      firstDate: DateTime(DateTime.now().year - 2, 5), // Batas bawah 2 tahun lalu
+      lastDate: DateTime(DateTime.now().year + 2, 9),  // Batas atas 2 tahun depan
       initialDate: selectedDate ?? DateTime.now(),
       confirmWidget: Text(
         'Pilih',
@@ -167,13 +183,15 @@ class _HistoryPageState extends State<HistoryPage> {
       if (date != null) {
         setState(() {
           selectedDate = date;
+          // Update teks filter agar user tahu sedang memfilter bulan apa
           titleFilter =
-              "Bulan ${ParsingString().convertDateOnlyMonth(date.toString())}";
+          "Bulan ${ParsingString().convertDateOnlyMonth(date.toString())}";
         });
       }
     });
   }
 
+  // Widget Tombol Filter di pojok kanan atas list.
   buttonFilter(List<HistoryModel> histories) {
     final List<String> menuOptions = [
       'Semua Laporan',
@@ -185,6 +203,7 @@ class _HistoryPageState extends State<HistoryPage> {
       crossAxisAlignment: CrossAxisAlignment.center,
       mainAxisAlignment: MainAxisAlignment.end,
       children: [
+        // Menampilkan teks filter yang sedang aktif
         Expanded(
           child: Text(
             titleFilter,
@@ -194,11 +213,12 @@ class _HistoryPageState extends State<HistoryPage> {
             ),
           ),
         ),
+        // Popup Menu untuk pilihan filter
         PopupMenuButton<String>(
           icon: const Icon(Icons.filter_alt),
           onSelected: (String value) {
             if (value == "Pilih Bulan") {
-              monthPicker(context);
+              monthPicker(context); // Buka dialog month picker
             } else {
               setState(() {
                 titleFilter = value;
@@ -223,6 +243,8 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  /// Fungsi Inti Filtering: Menyaring list data berdasarkan kriteria 'titleFilter'.
+  /// Dilakukan di sisi Client (Local Filtering) agar tidak perlu request ulang ke database setiap ganti filter.
   List<HistoryModel> _historiesFiltered(List<HistoryModel> histories) {
     if (titleFilter == "Semua Laporan") {
       return histories;
@@ -230,37 +252,44 @@ class _HistoryPageState extends State<HistoryPage> {
       return histories
           .where(
             (element) =>
-                ParsingString().convertDateOnlyMonth(element.dateStart!) ==
-                ParsingString().convertDateOnlyMonth(DateTime.now().toString()),
-          )
+        ParsingString().convertDateOnlyMonth(element.dateStart!) ==
+            ParsingString().convertDateOnlyMonth(DateTime.now().toString()),
+      )
           .toList();
     } else if (titleFilter ==
         "Bulan ${ParsingString().convertDateOnlyMonth(selectedDate.toString())}") {
       return histories
           .where(
             (element) =>
-                ParsingString().convertDateOnlyMonth(element.dateStart!) ==
-                ParsingString().convertDateOnlyMonth(selectedDate.toString()),
-          )
+        ParsingString().convertDateOnlyMonth(element.dateStart!) ==
+            ParsingString().convertDateOnlyMonth(selectedDate.toString()),
+      )
           .toList();
     } else {
       return histories;
     }
   }
 
+  // Menggunakan GroupedListView dari package 'grouped_list'.
+  // Fungsinya mengelompokkan item list berdasarkan Bulan & Tahun secara otomatis.
+  // Ini bikin tampilan riwayat jauh lebih rapi dibanding list biasa yang datar.
   groupedListView(List<HistoryModel> histories) {
     return GroupedListView<HistoryModel, String>(
       padding: EdgeInsets.zero,
       elements: _historiesFiltered(histories),
       shrinkWrap: true,
+      // Sorting item di dalam grup berdasarkan tanggal selesai
       itemComparator: (a, b) => a.dateFinished!.compareTo(b.dateFinished!),
+      // Kunci pengelompokan: Format 'yyyy MM' (Contoh: 2024 08)
       groupBy: (element) => element.dateFinished == ""
           ? "A"
           : DateFormat('yyyy MM').format(DateTime.parse(element.dateFinished!)),
-      order: GroupedListOrder.DESC,
+      order: GroupedListOrder.DESC, // Urutkan grup dari yang terbaru (Descending)
+      // Widget Header untuk setiap grup (Separator)
       groupSeparatorBuilder: (String value) {
         return _groupSeparatorBuilder(value);
       },
+      // Widget Item List
       itemBuilder: (context, element) {
         return HistoryCardView(
           history: element,
@@ -271,6 +300,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  // Widget Separator (Judul Grup Bulan/Tahun)
   Padding _groupSeparatorBuilder(String value) {
     return Padding(
       padding: const EdgeInsets.only(
@@ -281,6 +311,7 @@ class _HistoryPageState extends State<HistoryPage> {
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
           Text(
+            // Konversi '2024 08' jadi 'Agustus 2024' biar human-readable
             ParsingString().convertDateSwitchPosition(value),
             style: GoogleFonts.openSans(
               fontSize: 18,
@@ -297,6 +328,7 @@ class _HistoryPageState extends State<HistoryPage> {
     );
   }
 
+  // Widget Empty State: Tampilan user-friendly jika data kosong
   isEmptyText() {
     if (userRole == "1") {
       return Padding(
@@ -329,14 +361,15 @@ class _HistoryPageState extends State<HistoryPage> {
     }
   }
 
+  // Header teks yang berubah sesuai Role
   headerPage() {
     if (userRole == "1") {
       return const HeaderPage(
-        name: "Laporan",
+        name: "Laporan", // Bahasa Admin
       );
     } else if (userRole == "2") {
       return const HeaderPage(
-        name: "Riwayat Reservasi",
+        name: "Riwayat Reservasi", // Bahasa User
       );
     } else {
       return const SizedBox();

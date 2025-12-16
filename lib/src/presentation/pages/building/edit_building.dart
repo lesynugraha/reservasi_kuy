@@ -20,6 +20,7 @@ import '../../widgets/general/header_detail_page.dart';
 import '../../widgets/general/widget_custom_loading.dart';
 
 class EditBuildingPage extends StatefulWidget {
+  // Wajib menerima parameter 'building' agar form bisa terisi otomatis dengan data lama
   const EditBuildingPage({super.key, required this.building});
 
   final BuildingModel building;
@@ -41,9 +42,12 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
   late String _selectedValue;
   Uint8List? imagePicked;
 
-  /// update gedung
+  /// Fungsi utama untuk menyimpan perubahan data gedung.
+  /// Menggunakan logika percabangan untuk efisiensi upload.
   updateBuilding(BuildContext context) {
     return () async {
+      // Skenario 1: Admin mengganti gambar gedung.
+      // Maka perlu proses upload ulang ke Firebase Storage sebelum update data di Firestore.
       if (imagePicked != null) {
         final urlImage = await StoreData().uploadImageToStorage(
           "building",
@@ -61,12 +65,14 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
             facilityController.text,
             int.parse(capacityController.text),
             ruleController.text,
-            urlImage,
+            urlImage, // URL baru hasil upload
             widget.building.name!,
             _selectedValue,
           ),
         );
       } else {
+        // Skenario 2: Admin HANYA mengubah teks (Nama, Deskripsi, dll) tanpa ganti gambar.
+        // Langsung pakai URL lama (imageController.text) agar tidak perlu upload ulang (hemat bandwidth).
         _buildingBloc = context.read<BuildingBloc>();
         _buildingBloc.add(
           UpdateBuilding(
@@ -76,7 +82,7 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
             facilityController.text,
             int.parse(capacityController.text),
             ruleController.text,
-            imageController.text,
+            imageController.text, // Masih menggunakan URL gambar yang lama
             widget.building.name!,
             _selectedValue,
           ),
@@ -85,7 +91,7 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
     };
   }
 
-  /// pilih gambar dari perangkat
+  /// Mengambil gambar baru dari galeri lokal perangkat
   selectImage() async {
     Uint8List img = await StoreData().pickImage(ImageSource.gallery);
     setState(() {
@@ -93,6 +99,8 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
     });
   }
 
+  // Helper widget untuk menampilkan preview gambar.
+  // Menangani 3 kondisi: Gambar default, Gambar dari URL (Cached), atau Gambar kosong.
   imageLoader() {
     if (widget.building.image! == "") {
       return const Image(
@@ -125,7 +133,11 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
 
   @override
   void initState() {
+    // Inisialisasi status dropdown (Tersedia/Tidak Tersedia) sesuai data di database
     _selectedValue = widget.building.status!;
+
+    // Pre-fill semua Text Controller dengan data yang diterima dari parameter widget.building.
+    // Ini UX standar halaman Edit: User melihat data lama dulu sebelum mengubahnya.
     buildingNameController = TextEditingController(text: widget.building.name);
     buildingBaseNameController =
         TextEditingController(text: widget.building.name);
@@ -140,6 +152,7 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
 
   @override
   void dispose() {
+    // Membersihkan controller dari memori saat halaman ditutup
     buildingNameController.dispose();
     buildingBaseNameController.dispose();
     descController.dispose();
@@ -171,6 +184,7 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
                 const HeaderDetailPage(pageName: "Edit Gedung"),
                 Expanded(
                   child: RefreshIndicator(
+                    // Fitur reset form ke kondisi awal database jika user menarik layar (pull-to-refresh)
                     onRefresh: () async {
                       setState(() {
                         buildingNameController =
@@ -202,6 +216,8 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
                                   children: [
                                     Builder(
                                       builder: (context) {
+                                        // Prioritaskan menampilkan gambar baru jika user sudah memilih dari galeri (imagePicked).
+                                        // Jika belum ada pilih baru, tampilkan gambar lama (imageLoader).
                                         if (imagePicked != null) {
                                           return Image(
                                             height: 250,
@@ -242,36 +258,37 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
                                         ),
                                       ),
                                     ),
+                                    // Tombol hapus preview gambar baru (cancel upload)
                                     imagePicked != null
                                         ? Positioned(
-                                            top: 0,
-                                            right: 0,
-                                            child: Container(
-                                              decoration: BoxDecoration(
-                                                shape: BoxShape.circle,
-                                                color: Colors.blueAccent
-                                                    .withOpacity(0.3),
-                                              ),
-                                              child: Material(
-                                                color: Colors.transparent,
-                                                child: InkWell(
-                                                  onTap: () {
-                                                    setState(() {
-                                                      imagePicked = null;
-                                                    });
-                                                  },
-                                                  customBorder:
-                                                      const CircleBorder(),
-                                                  child: const Padding(
-                                                    padding: EdgeInsets.all(4),
-                                                    child: Icon(
-                                                      Icons.delete,
-                                                    ),
-                                                  ),
-                                                ),
+                                      top: 0,
+                                      right: 0,
+                                      child: Container(
+                                        decoration: BoxDecoration(
+                                          shape: BoxShape.circle,
+                                          color: Colors.blueAccent
+                                              .withOpacity(0.3),
+                                        ),
+                                        child: Material(
+                                          color: Colors.transparent,
+                                          child: InkWell(
+                                            onTap: () {
+                                              setState(() {
+                                                imagePicked = null;
+                                              });
+                                            },
+                                            customBorder:
+                                            const CircleBorder(),
+                                            child: const Padding(
+                                              padding: EdgeInsets.all(4),
+                                              child: Icon(
+                                                Icons.delete,
                                               ),
                                             ),
-                                          )
+                                          ),
+                                        ),
+                                      ),
+                                    )
                                         : const SizedBox(),
                                   ],
                                 ),
@@ -320,6 +337,7 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
                               const CustomTitleTextFormField(
                                 subtitle: "Status",
                               ),
+                              // Dropdown untuk mengubah status ketersediaan gedung secara manual
                               DropdownButtonFormField<String>(
                                 decoration: InputDecoration(
                                   prefixIcon: const Icon(Icons.event_available),
@@ -391,6 +409,7 @@ class _EditBuildingPageState extends State<EditBuildingPage> {
                 ),
               ],
             ),
+            // Indikator loading yang muncul di tengah layar saat proses update berjalan
             Center(
               child: BlocBuilder<BuildingBloc, BuildingState>(
                 builder: (context, state) {

@@ -20,14 +20,18 @@ class LoginPage extends StatefulWidget {
 }
 
 class _LoginPageState extends State<LoginPage> {
-  /// inisiasi data
+  /// inisiasi controller untuk menangkap inputan user
   late TextEditingController usernameController;
   late TextEditingController passwordController;
   late AuthenticationBloc loginBloc;
   late String role;
+
+  // Key ini penting untuk validasi form (cek kosong atau tidak) sebelum dikirim
   final GlobalKey<FormState> _formKey = GlobalKey<FormState>();
 
-  /// fungsi untuk login
+  /// Fungsi ini yang dipanggil saat tombol 'Masuk' ditekan.
+  /// Gunanya untuk memicu event 'OnLogin' ke AuthenticationBloc.
+  /// Data username dan password dari controller dikirim ke Bloc untuk diproses ke backend.
   loginButton() {
     loginBloc = context.read<AuthenticationBloc>();
     loginBloc.add(OnLogin(
@@ -45,6 +49,7 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   void dispose() {
+    // Wajib dispose controller biar gak memory leak pas pindah halaman
     usernameController.dispose();
     passwordController.dispose();
     super.dispose();
@@ -52,9 +57,15 @@ class _LoginPageState extends State<LoginPage> {
 
   @override
   Widget build(BuildContext context) {
+    // BlocListener di sini fungsinya cuma buat mendengarkan perubahan state,
+    // bukan buat ngerender UI (Logic Only). Cocok buat navigasi atau snackbar.
     return BlocListener<AuthenticationBloc, AuthenticationState>(
       listener: (context, state) async {
-        // === LOGIKA UPDATE TOKEN ===
+
+        // === LOGIKA UPDATE TOKEN NOTIFIKASI ===
+        // Kalau login berhasil (dapat role SuperAdmin, Admin, atau User),
+        // saya langsung update Device Token (FCM) user tersebut ke database.
+        // Gunanya supaya notifikasi reservasi masuk ke HP yang sedang dipakai login ini.
         if (state is IsSuperAdmin || state is IsAdmin || state is IsUser) {
           try {
             final token = await NotificationServices().getDeviceToken();
@@ -74,11 +85,13 @@ class _LoginPageState extends State<LoginPage> {
         }
         // ===========================
 
-        // [PENTING] Cek apakah halaman masih ada sebelum pindah
-        // Ini menghilangkan warning 'use_build_context_synchronously'
+        // Cek mounted dulu untuk menghindari error 'use_build_context_synchronously'
+        // kalau user tiba-tiba keluar aplikasi pas lagi loading.
         if (!context.mounted) return;
 
-        // === LOGIKA NAVIGASI ===
+        // === LOGIKA NAVIGASI (ROUTING) ===
+        // Di sini penentuan arah navigasi berdasarkan role yang didapat dari database.
+        // Menggunakan GoRouter (context.goNamed) biar manajemen stack halamannya rapi.
         if (state is IsSuperAdmin) {
           context.goNamed(Routes().homeSuperAdmin);
         } else if (state is IsAdmin) {
@@ -88,18 +101,20 @@ class _LoginPageState extends State<LoginPage> {
         }
       },
       child: Scaffold(
+        // Pakai Stack supaya saya bisa menaruh loading indicator (overlay)
+        // tepat di atas form login ketika proses verifikasi sedang berjalan.
         body: Stack(
           children: [
             Center(
               child: RefreshIndicator(
                 onRefresh: () async {
-                  //Do Nothing
+                  // Fitur tarik ke bawah, saat ini dikosongkan (Do Nothing)
                 },
                 child: SingleChildScrollView(
                   child: Padding(
                     padding: const EdgeInsets.all(24),
                     child: Form(
-                      key: _formKey,
+                      key: _formKey, // Mengaitkan key validasi ke widget Form
                       child: Column(
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
@@ -122,6 +137,7 @@ class _LoginPageState extends State<LoginPage> {
                             ),
                           ),
                           const Gap(10),
+                          // Custom Widget untuk input text biar kodenya lebih bersih (reusable)
                           CustomTextFormField(
                             fieldName: "Nama Pengguna",
                             controller: usernameController,
@@ -132,6 +148,9 @@ class _LoginPageState extends State<LoginPage> {
                             controller: passwordController,
                             prefixIcon: Icons.lock,
                           ),
+
+                          // BlocBuilder ini khusus buat nampilin pesan error kalau login gagal (misal: password salah).
+                          // Kenapa dipisah? Supaya yang di-rebuild cuma teks errornya aja, bukan se-halaman.
                           Padding(
                             padding: const EdgeInsets.all(12),
                             child: BlocBuilder<AuthenticationBloc,
@@ -161,6 +180,8 @@ class _LoginPageState extends State<LoginPage> {
                               color: Colors.transparent,
                               child: InkWell(
                                 onTap: () {
+                                  // Validasi dulu: Pastikan form gak ada yang kosong.
+                                  // Kalau valid, baru panggil fungsi loginButton().
                                   if (_formKey.currentState!.validate()) {
                                     loginButton();
                                   }
@@ -191,13 +212,16 @@ class _LoginPageState extends State<LoginPage> {
                 ),
               ),
             ),
+
+            // Ini layer loading yang muncul kalau state lagi 'LoginLoading'.
+            // User jadi gak bisa klik apa-apa pas lagi muter (blocking UI).
             Center(
               child: BlocBuilder<AuthenticationBloc, AuthenticationState>(
                 builder: (context, state) {
                   if (state is LoginLoading) {
                     return Container(
                       decoration: const BoxDecoration(
-                        color: Color(0x80FFFFFF),
+                        color: Color(0x80FFFFFF), // Putih transparan
                       ),
                       child: const Center(
                         child: CircularProgressIndicator(),

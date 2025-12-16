@@ -1,10 +1,15 @@
 part of 'repositories.dart';
 
+/// Repository ini menangani seluruh transaksi data reservasi ke Firestore.
+/// Menggunakan pendekatan Reactive (Stream) untuk pemantauan data secara Real-time
+/// dan Future untuk operasi satu kali (One-time) seperti Create/Delete.
 class ReservationRepo {
   late String error;
   late String statusCode;
 
   /// membuat reservasi
+  /// Menyimpan data pengajuan baru ke koleksi 'reservations'.
+  /// Flow: Add Document -> Get ID -> Update ID field inside document.
   createReservation(
       String? buildingName,
       String? contactId,
@@ -23,7 +28,7 @@ class ReservationRepo {
 
     try {
       await Repositories().db.collection("reservations").add({
-        "id": "",
+        "id": "", // ID awal kosong, akan diisi setelah dokumen terbuat
         "buildingName": buildingName,
         "contactId": contactId,
         "contactName": contactName,
@@ -34,11 +39,12 @@ class ReservationRepo {
         "dateCreated": dateCreated,
         "information": information,
         "agency": agency,
-        "status": "Menunggu",
+        "status": "Menunggu", // Status default saat pertama kali dibuat
         "image": image,
         "proofImage": proofImage,
       }).then(
             (value) {
+          // Update dokumen dengan ID yang digenerate oleh Firestore
           Repositories()
               .db
               .collection("reservations")
@@ -56,18 +62,22 @@ class ReservationRepo {
   /// Mendapatkan Stream Reservasi User (REAL-TIME)
   /// Menggunakan snapshots() bukan get()
   /// -----------------------------------------------------------------------
+  /// Fungsi ini mengembalikan Stream, bukan Future.
+  /// Memungkinkan UI User untuk 'mendengarkan' perubahan status secara langsung
+  /// tanpa perlu refresh manual. Sangat berguna untuk UX saat menunggu persetujuan Admin.
   Stream<List<ReservationModel>> getReservationStreamForUser(String contactId) {
     return Repositories()
         .db
         .collection("reservations")
-        .where("contactId", isEqualTo: contactId)
-        .snapshots() // <--- KUNCINYA (Listen terus menerus)
+        .where("contactId", isEqualTo: contactId) // Filter hanya milik user tersebut
+        .snapshots() // <--- KUNCINYA (Membangun koneksi socket yang terus terbuka)
         .map((querySnapshot) {
       if (querySnapshot.docs.isNotEmpty) {
         final List<ReservationModel> reservations = querySnapshot.docs
             .map((e) => ReservationModel.fromJson(e))
             .toList();
-        // Filter status sesuai logika aplikasi Anda
+
+        // Filter di sisi client untuk menampilkan status relevan
         return reservations
             .where((element) =>
         element.status == "Menunggu" ||
@@ -83,6 +93,9 @@ class ReservationRepo {
   /// -----------------------------------------------------------------------
   /// Mendapatkan Stream Reservasi Admin (REAL-TIME)
   /// -----------------------------------------------------------------------
+  /// Stream khusus Admin/Supervisor.
+  /// Admin akan melihat notifikasi reservasi masuk secara realtime.
+  /// Difilter berdasarkan 'agency' agar Admin Sekolah A tidak melihat data Sekolah B.
   Stream<List<ReservationModel>> getReservationStreamForAdmin(String agency) {
     return Repositories()
         .db
@@ -94,6 +107,7 @@ class ReservationRepo {
         final List<ReservationModel> reservations = querySnapshot.docs
             .map((e) => ReservationModel.fromJson(e))
             .toList();
+        // Hanya menampilkan yang perlu tindakan (Menunggu) atau yang aktif (Disetujui)
         return reservations
             .where((element) =>
         element.status == "Menunggu" || element.status == "Disetujui")
@@ -115,6 +129,7 @@ class ReservationRepo {
   }
 
   /// menghapus reservasi
+  /// Menghapus dokumen dari database secara permanen.
   deleteReservation(String id) async {
     statusCode = "";
     try {
@@ -127,12 +142,14 @@ class ReservationRepo {
   }
 
   /// menyetujui atau menolak reservasi (update status dan note)
+  /// Fungsi parsial update: Hanya mengubah field 'status' dan 'note' tanpa menimpa data lain.
   updateStatusReservation(String id, String status, {String? note}) async {
     statusCode = "";
     try {
       Map<String, dynamic> dataToUpdate = {
         "status": status,
       };
+      // Note bersifat opsional, hanya ditambahkan jika Admin menulis pesan
       if (note != null && note.isNotEmpty) {
         dataToUpdate["note"] = note;
       }
@@ -151,6 +168,9 @@ class ReservationRepo {
   }
 
   /// mendapatkan informasi dan pengecekan status tersedia reservasi
+  /// LOGIC VALIDASI JADWAL (Algorithm for Conflict Detection):
+  /// Mengecek apakah ada irisan (overlap) antara jadwal yang diajukan user
+  /// dengan jadwal yang SUDAH DISETUJUI di database.
   getReservationAvail(
       String dateStart,
       String dateEnd,
@@ -161,28 +181,37 @@ class ReservationRepo {
     final List<ReservationModel> noBooking = [];
 
     try {
+      // 1. Ambil semua reservasi untuk gedung tersebut di sekolah tersebut
       QuerySnapshot resultReservation = await Repositories()
           .db
           .collection("reservations")
           .where("agency", isEqualTo: agency)
           .where("buildingName", isEqualTo: buildingName)
           .get();
+
       if (resultReservation.docs.isNotEmpty) {
         final List<ReservationModel> listReservation = resultReservation.docs
             .map((e) => ReservationModel.fromJson(e))
             .toList();
 
+        // 2. Filter Logic: Cari jadwal yang bentrok
         final List<ReservationModel> reservationBookedByDate =
         listReservation.where(
               (element) {
+            // Abaikan jika reservasi belum disetujui (Menunggu/Ditolak tidak memblokir jadwal)
             if (element.status != "Disetujui") {
               return false;
             }
+
+            // Konversi String ke DateTime object untuk komparasi
             final DateTime elementStart = DateTime.parse(element.dateStart!);
             final DateTime elementEnd = DateTime.parse(element.dateEnd!);
             final DateTime enteredStart = DateTime.parse(dateStart);
             final DateTime enteredEnd = DateTime.parse(dateEnd);
 
+            // Rumus Matematika Logika Irisan Waktu (Time Overlap):
+            // (StartA < EndB) && (EndA > StartB)
+            // Ini mencakup semua kemungkinan: overlap sebagian depan, sebagian belakang, atau full di dalam.
             final bool isOverlapping = (enteredStart.isBefore(elementEnd) &&
                 enteredEnd.isAfter(elementStart)) ||
                 (enteredStart.isAtSameMomentAs(elementStart) ||
@@ -198,15 +227,16 @@ class ReservationRepo {
           },
         ).toList();
 
+        // Jika list tidak kosong, berarti ADA yang bentrok -> Return 201
         if (reservationBookedByDate.isNotEmpty) {
           statusCode = "201";
           return reservationBookedByDate;
         } else {
-          statusCode = "200";
+          statusCode = "200"; // Tanggal aman
           return noBooking;
         }
       } else {
-        statusCode = "200";
+        statusCode = "200"; // Belum ada reservasi sama sekali
         return noBooking;
       }
     } catch (e) {

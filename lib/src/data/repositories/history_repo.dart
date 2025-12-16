@@ -1,10 +1,15 @@
 part of 'repositories.dart';
 
+/// Repository ini menangani akses data untuk dua koleksi sekaligus:
+/// 1. 'histories': Data riwayat yang dilihat dari sisi User (Siswa).
+/// 2. 'reports': Data laporan yang dilihat dari sisi Admin (Sekolah).
 class HistoryRepo {
   late String error;
   late String statusCode;
 
   /// user: mendapatkan informasi riwayat reservasi
+  /// Mengambil data dari collection 'histories' dengan filter 'contactId'.
+  /// Logic ini memastikan User hanya bisa melihat riwayat miliknya sendiri (Data Privacy).
   getHistory(String contactId) async {
     error = "";
     statusCode = "";
@@ -13,7 +18,7 @@ class HistoryRepo {
       QuerySnapshot resultHistories = await Repositories()
           .db
           .collection("histories")
-          .where("contactId", isEqualTo: contactId)
+          .where("contactId", isEqualTo: contactId) // Filter data server-side
           .get();
 
       if (resultHistories.docs.isNotEmpty) {
@@ -32,6 +37,7 @@ class HistoryRepo {
   }
 
   /// user: membuat riwayat reservasi
+  /// Fungsi ini dijalankan saat reservasi selesai atau disetujui, mencatat jejak aktivitas.
   createHistory(
       String buildingName,
       String dateStart,
@@ -51,8 +57,9 @@ class HistoryRepo {
     statusCode = "";
 
     try {
+      // 1. Tambahkan dokumen baru ke Firestore (Auto-Generated ID)
       await Repositories().db.collection("histories").add({
-        "id": "",
+        "id": "", // ID sementara kosong
         "buildingName": buildingName,
         "dateStart": dateStart,
         "dateEnd": dateEnd,
@@ -65,9 +72,11 @@ class HistoryRepo {
         "agency": agency,
         "image": image,
         "note": note ?? "",
-        "proofImage": proofImage ?? "", // <--- [BARU] Simpan ke Firestore
+        "proofImage": proofImage ?? "", // <--- [BARU] Simpan URL bukti bayar
       }).then(
             (value) {
+          // 2. Update dokumen tersebut untuk menyimpan ID-nya sendiri
+          // Ini memudahkan referensi update/delete di masa depan
           Repositories()
               .db
               .collection("histories")
@@ -82,6 +91,7 @@ class HistoryRepo {
   }
 
   /// user: update laporan diselesaikan
+  /// Mengubah status laporan menjadi selesai dengan mengisi timestamp 'dateFinished'.
   updateFinishedReport(String id) async {
     statusCode = "";
     try {
@@ -97,6 +107,8 @@ class HistoryRepo {
   }
 
   /// admin: mendapatkan informasi laporan
+  /// Berbeda dengan getHistory, fungsi ini memfilter berdasarkan 'agency'.
+  /// Memungkinkan Admin melihat rekap semua kegiatan siswa di sekolah tersebut.
   getReportByAgency(String agency) async {
     statusCode = "";
     try {
@@ -121,6 +133,8 @@ class HistoryRepo {
   }
 
   /// admin: membuat laporan reservasi (custom id)
+  /// Menggunakan metode .set() bukan .add() karena kita ingin menentukan ID dokumen secara manual.
+  /// Biasanya digunakan saat memindahkan data dari 'Reservasi' ke 'Report' agar ID-nya tetap konsisten.
   createReportCustomId(
       String id,
       String buildingName,
@@ -161,6 +175,7 @@ class HistoryRepo {
     }
   }
 
+  /// Membuat laporan manual (Input Admin).
   createReport(
       String buildingName,
       String dateStart,

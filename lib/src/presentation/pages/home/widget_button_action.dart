@@ -1,11 +1,14 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 
+// Widget ini dibuat 'Reusable' (Dapat digunakan kembali).
+// Tujuannya agar tidak perlu membuat kodingan tombol yang sama berulang-ulang di halaman Home.
+// Cukup panggil 'ButtonAction', lalu kirim parameter teks dan fungsinya.
 class ButtonAction extends StatelessWidget {
   const ButtonAction({
     super.key,
-    required this.name,
-    required this.function,
+    required this.name, // Teks tombol (Contoh: "Terima", "Tolak", "Selesai")
+    required this.function, // Logika/Fungsi yang akan dijalankan saat tombol ditekan
   });
 
   final String name;
@@ -14,18 +17,21 @@ class ButtonAction extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      width: 90,
+      width: 90, // Lebar fixed agar ukuran tombol konsisten
+      // Menggunakan fungsi helper decorationBox() untuk menentukan warna border secara dinamis
       decoration: decorationBox(),
+      // Material widget diperlukan agar efek 'InkWell' (ripple/percikan air) terlihat jelas
       child: Material(
         color: Colors.transparent,
         child: InkWell(
           borderRadius: BorderRadius.circular(8),
-          onTap: function,
+          onTap: function, // Menjalankan fungsi yang dikirim dari parent widget
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 4),
             child: Center(
               child: Text(
                 name,
+                // Menggunakan helper decorationText() agar warna teks sinkron dengan warna border
                 style: decorationText(),
               ),
             ),
@@ -35,6 +41,10 @@ class ButtonAction extends StatelessWidget {
     );
   }
 
+  // Logika Conditional Styling untuk Border:
+  // - Jika aksi bersifat POSITIF (Terima/Selesai) -> Warna BIRU.
+  // - Jika aksi bersifat NEGATIF (Tolak/Batal) -> Warna MERAH.
+  // Ini memudahkan user membedakan tindakan secara visual (UX visual cue).
   decorationBox() {
     if (name == "Terima" || name == "Selesai") {
       return BoxDecoration(
@@ -57,6 +67,8 @@ class ButtonAction extends StatelessWidget {
     }
   }
 
+  // Logika Conditional Styling untuk Teks:
+  // Warna teks menyesuaikan dengan border agar desain konsisten.
   decorationText() {
     if (name == "Terima" || name == "Selesai") {
       return GoogleFonts.openSans(

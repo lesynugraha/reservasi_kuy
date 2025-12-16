@@ -7,6 +7,9 @@ import '../../utils/constant/constant.dart';
 import 'icon_navbar.dart';
 
 class BotNavBar extends StatefulWidget {
+  // menggunakan StatefulNavigationShell dari GoRouter.
+  // Ini komponen kuncinya, Gunanya untuk membuat 'Persistent Bottom Navigation'.
+  // Jadi kalau user pindah tab (misal dari Home ke Gedung), state di halaman Home tidak hilang/reset.
   final StatefulNavigationShell navigationShell;
 
   const BotNavBar({required this.navigationShell, super.key});
@@ -17,15 +20,21 @@ class BotNavBar extends StatefulWidget {
 
 class _BotNavBarState extends State<BotNavBar> {
 
-  // Fungsi navigasi sederhana: Langsung gunakan index asli
-  // Karena setiap Role punya Shell sendiri, index-nya sudah pasti 1:1
+  // Fungsi navigasi untuk perpindahan tab.
+  // Saya menggunakan 'goBranch' supaya GoRouter tahu branch mana yang harus diaktifkan
+  // tanpa menumpuk halaman baru di stack (memory efficient).
   void _goBranch(int index) {
     widget.navigationShell.goBranch(
       index,
+      // Kalau user tap icon tab yang sedang aktif, dia akan kembali ke root (awal) tab tersebut.
       initialLocation: index == widget.navigationShell.currentIndex,
     );
   }
 
+  // === DEFINISI ITEM NAVIGASI BERDASARKAN ROLE ===
+  // memisahkan list menu ini supaya codingannya bersih dan mudah dimaintain.
+
+  // 1. Menu untuk User (Siswa/Organisasi) - Akses Penuh ke fitur reservasi
   final List<BottomNavigationBarItem> _itemBotNavBarUser = [
     const BottomNavigationBarItem(
       icon: IconNavBar(iconPath: homeIcon, color: Colors.transparent),
@@ -54,6 +63,7 @@ class _BotNavBarState extends State<BotNavBar> {
     ),
   ];
 
+  // 2. Menu untuk Admin (Supervisor Sekolah) - Fokus monitoring laporan
   final List<BottomNavigationBarItem> _iconBotNavBarAdmin = [
     // Index 0 di Shell Admin = Home
     const BottomNavigationBarItem(
@@ -61,13 +71,13 @@ class _BotNavBarState extends State<BotNavBar> {
       activeIcon: IconNavBar(iconPath: homeActiveIcon, color: Colors.blueAccent),
       label: "Home",
     ),
-    // Index 1 di Shell Admin = Building
+    // Index 1 di Shell Admin = Building (Manajemen Gedung)
     const BottomNavigationBarItem(
       icon: IconNavBar(iconPath: buildingIcon, color: Colors.transparent),
       activeIcon: IconNavBar(iconPath: buildingActiveIcon, color: Colors.blueAccent),
       label: "Gedung",
     ),
-    // Index 2 di Shell Admin = Report (History)
+    // Index 2 di Shell Admin = Report (Laporan aktivitas)
     const BottomNavigationBarItem(
       icon: IconNavBar(iconPath: historyIcon, color: Colors.transparent),
       activeIcon: IconNavBar(iconPath: historyActiveIcon, color: Colors.blueAccent),
@@ -81,6 +91,7 @@ class _BotNavBarState extends State<BotNavBar> {
     ),
   ];
 
+  // 3. Menu untuk SuperAdmin - Hanya manajemen user
   final List<BottomNavigationBarItem> _iconBotNavBarSuperAdmin = [
     // Index 0 di Shell SuperAdmin = Home
     const BottomNavigationBarItem(
@@ -98,18 +109,21 @@ class _BotNavBarState extends State<BotNavBar> {
 
   @override
   Widget build(BuildContext context) {
-    // Ambil index langsung dari Shell yang sedang aktif
+    // Mengambil index halaman saat ini langsung dari Shell GoRouter biar sinkron.
     final int currentIndex = widget.navigationShell.currentIndex;
 
+    // Menggunakan BlocBuilder untuk merender BottomNavBar yang berbeda sesuai Role user yang login.
+    // Ini memastikan user tidak bisa melihat menu yang bukan hak aksesnya (Security by UI).
     return BlocBuilder<AuthenticationBloc, AuthenticationState>(
       builder: (context, state) {
         if (state is IsSuperAdmin) {
           return Scaffold(
+            // Body-nya adalah navigationShell, bukan widget halaman biasa.
+            // Ini supaya konten halaman berganti sesuai tab yang dipilih.
             body: widget.navigationShell,
             bottomNavigationBar: BottomNavigationBar(
               iconSize: 22,
               type: BottomNavigationBarType.fixed,
-              // Index shell SuperAdmin pasti 0 atau 1. Aman.
               currentIndex: currentIndex,
               onTap: _goBranch,
               items: _iconBotNavBarSuperAdmin,
@@ -121,7 +135,6 @@ class _BotNavBarState extends State<BotNavBar> {
             bottomNavigationBar: BottomNavigationBar(
               iconSize: 22,
               type: BottomNavigationBarType.fixed,
-              // Index shell Admin pasti 0, 1, 2, atau 3. Aman.
               currentIndex: currentIndex,
               onTap: _goBranch,
               items: _iconBotNavBarAdmin,
@@ -134,9 +147,8 @@ class _BotNavBarState extends State<BotNavBar> {
             bottomNavigationBar: BottomNavigationBar(
               iconSize: 22,
               type: BottomNavigationBarType.fixed,
-              // Index shell User pasti 0 s.d 4. Aman.
               currentIndex: currentIndex,
-              onTap: _goBranch,
+              onTap: _goBranch, // Fungsi pindah halaman dipanggil di sini
               items: _itemBotNavBarUser,
             ),
           );

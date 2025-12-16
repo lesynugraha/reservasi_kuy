@@ -10,6 +10,8 @@ import '../../widgets/general/widget_text_content_reservation.dart';
 import '../../widgets/general/widget_title_desc_card_view.dart';
 import '../../widgets/general/dialog_proof_view.dart'; // <--- Import Dialog
 
+// Widget ini dipisahkan agar kode di HistoryPage lebih bersih.
+// Bersifat Stateless karena hanya menerima data (HistoryModel) dan menampilkannya, tidak ada perubahan state internal.
 class HistoryCardView extends StatelessWidget {
   const HistoryCardView({
     super.key,
@@ -22,6 +24,9 @@ class HistoryCardView extends StatelessWidget {
   final VoidCallback function;
   final String role;
 
+  // Logic handling gambar gedung.
+  // Menggunakan CachedNetworkImage untuk efisiensi: gambar didownload sekali, lalu disimpan di cache lokal.
+  // Ini mencegah penggunaan data berlebih saat user scroll list naik-turun.
   imageLoader() {
     if (history.image == "") {
       return Container(
@@ -100,12 +105,17 @@ class HistoryCardView extends StatelessWidget {
                           text: history.buildingName!,
                           isTitle: true,
                         ),
+
+                        // Conditional Rendering berdasarkan Role:
+                        // Jika Admin (role == "1"), tampilkan nama pemesan agar Admin tahu siapa yang reservasi.
+                        // Jika User biasa, tidak perlu ditampilkan (redundant lihat nama sendiri).
                         role == "1"
                             ? TextContentCardView(
                           name: "Pengguna",
                           content: history.contactName!,
                         )
                             : const SizedBox(),
+
                         TextContentCardView(
                           name: "Mulai",
                           content: ParsingString()
@@ -135,11 +145,14 @@ class HistoryCardView extends StatelessWidget {
                           text: history.information!,
                         ),
 
-                        // vvv TOMBOL LIHAT BUKTI vvv
+                        // Validasi Null Safety untuk Bukti Upload:
+                        // Link "Lihat Bukti Upload" hanya muncul jika URL gambar ada dan tidak kosong.
+                        // Mencegah error/blank screen jika user belum upload bukti (untuk kasus tertentu).
                         if (history.proofImage != null &&
                             history.proofImage!.isNotEmpty) ...[
                           const Gap(5),
                           InkWell(
+                            // Memanggil DialogProofView untuk preview gambar tanpa pindah halaman.
                             onTap: () => DialogProofView.show(
                                 context, history.proofImage!),
                             child: const Text(
@@ -153,8 +166,9 @@ class HistoryCardView extends StatelessWidget {
                             ),
                           ),
                         ],
-                        // ^^^ SAMPAI SINI ^^^
 
+                        // Menampilkan Catatan Penolakan (jika ada).
+                        // Biasanya diisi oleh Admin saat menolak reservasi.
                         if (history.note != null &&
                             history.note!.isNotEmpty) ...[
                           const Gap(5),
@@ -176,10 +190,12 @@ class HistoryCardView extends StatelessWidget {
                 ],
               ),
               const Gap(8),
+
+              // Badge Status di bagian bawah kartu
               Container(
                 height: 35,
                 width: 120,
-                decoration: _boxDecoration(),
+                decoration: _boxDecoration(), // Warna border dinamis
                 child: Padding(
                   padding: const EdgeInsets.symmetric(
                     vertical: 4,
@@ -188,7 +204,7 @@ class HistoryCardView extends StatelessWidget {
                   child: Center(
                     child: Text(
                       history.status!,
-                      style: _textStyle(),
+                      style: _textStyle(), // Warna teks dinamis
                     ),
                   ),
                 ),
@@ -200,6 +216,9 @@ class HistoryCardView extends StatelessWidget {
     );
   }
 
+  // Visual Feedback: Mengubah warna border container status.
+  // - Biru: Jika status positif (Selesai/Disetujui).
+  // - Merah: Jika status negatif/pending (Ditolak/Menunggu).
   _boxDecoration() {
     if (history.status == "Selesai" || history.status == "Disetujui") {
       return BoxDecoration(
@@ -222,6 +241,7 @@ class HistoryCardView extends StatelessWidget {
     }
   }
 
+  // Visual Feedback: Mengubah warna teks status agar senada dengan border.
   _textStyle() {
     if (history.status == "Selesai" || history.status == "Disetujui") {
       return GoogleFonts.openSans(

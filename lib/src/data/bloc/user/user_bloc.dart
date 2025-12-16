@@ -9,6 +9,9 @@ part 'user_event.dart';
 
 part 'user_state.dart';
 
+/// BLoC ini menangani state untuk fitur Profil Pengguna (User Profile).
+/// Berbeda dengan RegisterBloc yang mengelola daftar banyak user,
+/// UserBloc fokus pada manajemen data diri user yang sedang login saat ini (Single User).
 class UserBloc extends Bloc<UserEvent, UserState> {
   Repositories repositories;
 
@@ -24,12 +27,16 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     emit(UserInitial());
   }
 
-  /// mendapatkan info user (logged id)
+  /// Mengambil informasi lengkap user yang sedang login.
+  /// Flow: Ambil username dari SharedPrefs -> Request data ke Server -> Tampilkan di UI.
   _getUserLoggedIn(GetUserLoggedIn event, Emitter<UserState> emit) async {
     emit(UserLoading());
     try {
+      // Identifikasi user berdasarkan username di local storage
       final username = await _getUsername();
       final user = await repositories.user.getUser(username);
+
+      // Validasi respon dari repository
       if (repositories.user.statusCode == "200") {
         emit(UserGetSuccess(user));
       } else {
@@ -40,7 +47,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
-  /// edit single user (logged in)
+  /// Logika untuk update data diri (Nama, Email, No HP, dll).
   _editSingleUser(EditSingleUser event, Emitter<UserState> emit) async {
     emit(UserLoading());
     try {
@@ -55,6 +62,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       );
       if (repositories.user.statusCode == "200") {
         emit(EditSingleUserSuccess());
+        // Auto-Refresh: Ambil data terbaru segera setelah update berhasil
+        // agar tampilan profil langsung berubah tanpa user perlu refresh manual.
         add(GetUserLoggedIn());
       }
     } catch (e) {
@@ -62,7 +71,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
-  /// edit profile picture single user (logged in)
+  /// Logika khusus untuk mengganti foto profil.
+  /// Memisahkan logic upload gambar agar lebih modular.
   _editProfilePicture(EditProfilePicture event, Emitter<UserState> emit) async {
     emit(UserLoading());
     try {
@@ -72,6 +82,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
       );
       if (repositories.user.statusCode == "200") {
         emit(EditSingleUserSuccess());
+        // Refresh data user untuk menampilkan URL gambar terbaru
         add(GetUserLoggedIn());
       }
     } catch (e) {
@@ -79,7 +90,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
-  /// edit password single user (logged in)
+  /// Logika ganti password.
+  /// Memerlukan validasi password lama di sisi backend.
   _editPassword(EditPassword event, Emitter<UserState> emit) async {
     emit(UserLoading());
     try {
@@ -89,6 +101,7 @@ class UserBloc extends Bloc<UserEvent, UserState> {
         event.oldPassword,
         event.newPassword,
       );
+      // Cek apakah ada error specific (misal: password lama salah)
       if (repositories.user.error == "") {
         emit(EditPasswordSuccess());
         add(GetUserLoggedIn());
@@ -100,7 +113,8 @@ class UserBloc extends Bloc<UserEvent, UserState> {
     }
   }
 
-  /// Get Token or Username
+  /// Helper: Mengambil username dari sesi lokal (Shared Preferences)
+  /// Digunakan sebagai key/parameter utama untuk mengambil data user dari database.
   _getUsername() async {
     SharedPreferences prefs = await SharedPreferences.getInstance();
     return prefs.getString("user");

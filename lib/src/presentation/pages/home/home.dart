@@ -437,6 +437,7 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               },
                             );
                           },
+                          // vvv FUNGSI YANG DIPERBARUI: Validasi minimal 10 karakter vvv
                           declineFunction: () {
                             PopUp().whenDoSomethingWithInput(
                               context,
@@ -450,8 +451,18 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                                   note: alasan,
                                 );
                               },
+                              validator: (value) {
+                                if (value == null || value.isEmpty) {
+                                  return 'Wajib diisi';
+                                }
+                                if (value.length < 10) {
+                                  return 'Alasan minimal 10 karakter';
+                                }
+                                return null;
+                              },
                             );
                           },
+                          // ^^^ SAMPAI SINI ^^^
                           role: userRole,
                         );
                       },
@@ -541,18 +552,14 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                               ),
                             );
                           },
-                          // vvv PERBAIKAN UTAMA DISINI vvv
-                          // Kita membungkus logika hapus dan logika navigasi bersama-sama
                           deleteFunction: () {
                             // 1. Jalankan fungsi hapus (actionReservationUser mengembalikan function)
                             actionReservationUser(
                                 reservations[index], "Ditolak")();
 
                             // 2. Paksa pindah ke halaman History menggunakan GoRouter
-                            // Ini menjamin navigasi berjalan setelah tombol ditekan
                             context.goNamed(Routes().history);
                           },
-                          // ^^^ SELESAI PERBAIKAN ^^^
                           role: userRole,
                         );
                       },
@@ -589,7 +596,6 @@ class _HomePageState extends State<HomePage> with TickerProviderStateMixin {
                       Icons.check_circle,
                     );
                   }
-                  // Popup "Berhasil Hapus" SUDAH DIHAPUS agar tidak mengganggu navigasi
                 },
               ),
               BlocListener<RegisterBloc, RegisterState>(

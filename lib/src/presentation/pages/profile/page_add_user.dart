@@ -13,9 +13,12 @@ import '../../widgets/general/widget_custom_text_form_field.dart';
 import '../../widgets/general/widget_custom_title_text_form_field.dart';
 
 class AddUserPage extends StatefulWidget {
+  // Widget ini bersifat polimorfik (bisa dipakai oleh dua role berbeda).
+  // 1. Super Admin pakai ini untuk tambah Supervisor Sekolah.
+  // 2. Supervisor Sekolah pakai ini untuk tambah Siswa/User.
   const AddUserPage({
     super.key,
-    required this.userModel,
+    required this.userModel, // Data user yang sedang login (untuk pengecekan role)
   });
 
   final UserModel userModel;
@@ -33,7 +36,8 @@ class _AddUserPageState extends State<AddUserPage> {
   final GlobalKey<FormState> formKey = GlobalKey<FormState>();
   late RegisterBloc registerBloc;
 
-  /// fungsi menambahkan user
+  /// Fungsi untuk mengirim event registrasi ke Bloc.
+  /// Parameter 'role' menentukan level akses user yang baru dibuat.
   register(String role) {
     return () {
       registerBloc = context.read<RegisterBloc>();
@@ -51,6 +55,7 @@ class _AddUserPageState extends State<AddUserPage> {
 
   @override
   void initState() {
+    // Jika yang login adalah Supervisor (Admin), field agency otomatis terisi sesuai sekolahnya.
     agencyController = TextEditingController(text: widget.userModel.agency);
     usernameController = TextEditingController();
     passwordController = TextEditingController();
@@ -75,7 +80,7 @@ class _AddUserPageState extends State<AddUserPage> {
       listener: (context, state) {
         if (state is RegisterSuccess) {
           PopUp().whenSuccessDoSomething(
-              context, "User berhasil ditambahkan", Icons.check_circle, true,);
+            context, "User berhasil ditambahkan", Icons.check_circle, true,);
         }
       },
       child: Scaffold(
@@ -95,7 +100,7 @@ class _AddUserPageState extends State<AddUserPage> {
                         padding: const EdgeInsets.symmetric(
                             vertical: 12, horizontal: 8),
                         child: Form(
-                          key: formKey,
+                          key: formKey, // Kunci validasi form
                           child: contentByRole(),
                         ),
                       ),
@@ -104,6 +109,7 @@ class _AddUserPageState extends State<AddUserPage> {
                 ),
               ],
             ),
+            // Indikator loading saat proses registrasi ke backend
             BlocBuilder<RegisterBloc, RegisterState>(
               builder: (context, state) {
                 if (state is RegisterLoading) {
@@ -118,7 +124,10 @@ class _AddUserPageState extends State<AddUserPage> {
     );
   }
 
+  // Menentukan tampilan form berdasarkan siapa yang sedang login.
   contentByRole() {
+    // Jika yang login adalah Supervisor (Role 1), dia tidak boleh mengubah nama instansi/sekolah.
+    // Dia hanya bisa menambahkan siswa untuk sekolahnya sendiri.
     if (widget.userModel.role == "1") {
       agencyController = TextEditingController(
         text: widget.userModel.agency!,
@@ -127,6 +136,7 @@ class _AddUserPageState extends State<AddUserPage> {
     return adminContent();
   }
 
+  // Tampilan Form Input
   Column adminContent() {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -154,6 +164,7 @@ class _AddUserPageState extends State<AddUserPage> {
         ),
         const Gap(10),
         const CustomTitleTextFormField(subtitle: "Instansi"),
+        // Field Instansi akan Read-Only jika widget.userModel.role == "1" (lihat logika di CustomTextFormField)
         CustomTextFormField(
           fieldName: "Instansi",
           controller: agencyController,
@@ -161,6 +172,8 @@ class _AddUserPageState extends State<AddUserPage> {
           role: widget.userModel.role,
         ),
         const Gap(20),
+
+        // Menampilkan Error Register jika ada (misal username sudah dipakai)
         BlocBuilder<RegisterBloc, RegisterState>(
           builder: (context, state) {
             if (state is RegisterFailed) {
@@ -178,12 +191,17 @@ class _AddUserPageState extends State<AddUserPage> {
           },
         ),
         const Gap(20),
+
+        // Tombol Submit
         Align(
           alignment: Alignment.bottomRight,
           child: ButtonPositive(
             name: "Tambah User",
             function: () {
               if (formKey.currentState!.validate()) {
+                // Logika Hierarki Penambahan User:
+                // Jika SuperAdmin (0) -> Tambah Supervisor (1).
+                // Jika Supervisor (1) -> Tambah User Biasa (2).
                 if (widget.userModel.role == "0") {
                   PopUp().whenDoSomething(
                     context,

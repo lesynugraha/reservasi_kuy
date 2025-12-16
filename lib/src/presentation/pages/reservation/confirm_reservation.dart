@@ -21,6 +21,8 @@ import '../../widgets/general/widget_custom_text_form_field.dart';
 import '../../widgets/general/widget_title_subtitle.dart';
 
 class ConfirmReservationPage extends StatefulWidget {
+  // Wajib menerima data gedung dan tanggal yang dipilih dari halaman sebelumnya.
+  // Ini memastikan data yang dikonfirmasi sesuai dengan pilihan user.
   const ConfirmReservationPage({
     super.key,
     required this.building,
@@ -42,30 +44,34 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
   late UserBloc _userBloc;
   late UserModel user;
 
-  // [BARU] Variabel untuk menyimpan gambar bukti
+  // Variabel state untuk menyimpan sementara file gambar bukti pengajuan dalam bentuk bytes.
+  // Disimpan sebagai Uint8List agar kompatibel dengan web dan mobile.
   Uint8List? _imageProof;
 
-  /// mendapatkan info user
+  /// Fetch data user yang sedang login.
+  /// Diperlukan untuk mengisi data pemesan secara otomatis di backend.
   getUser() {
     _userBloc = context.read<UserBloc>();
     _userBloc.add(GetUserLoggedIn());
   }
 
-  // [BARU] Fungsi untuk mengambil gambar dari galeri
+  /// Fungsi Membuka Galeri & Menyimpan Hasilnya.
+  /// Menggunakan helper StoreData yang sudah ada untuk standardisasi cara pick image.
   Future<void> _pickProofImage() async {
-    // Menggunakan StoreData helper yang sudah ada di project kamu
     Uint8List? file = await StoreData().pickImage(ImageSource.gallery);
     if (file != null) {
       setState(() {
-        _imageProof = file;
+        _imageProof = file; // Update state untuk menampilkan preview
       });
     }
   }
 
-  /// membuat reservasi
+  /// Fungsi Inti: Submit Reservasi.
   createReservation() {
     return () {
       _reservationBloc = context.read<ReservationBloc>();
+      // Mengirim Event 'CreateReservation' ke Bloc.
+      // Data yang dikirim mencakup detail gedung, data user, tanggal, keterangan, dan file bukti (jika ada).
       _reservationBloc.add(
         CreateReservation(
           widget.building.name!,
@@ -78,12 +84,13 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
           informationController.text,
           user.agency!,
           widget.building.image!,
-          _imageProof, // [BARU] Kirim file bukti ke Event BLoC
+          _imageProof, // Mengirim file bukti untuk diupload di layer Repository
         ),
       );
     };
   }
 
+  // Helper tampilan gambar gedung.
   imageLoader() {
     if (widget.building.image! == "") {
       return const Image(
@@ -116,7 +123,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
 
   @override
   void initState() {
-    getUser();
+    getUser(); // Load data user saat inisialisasi
     informationController = TextEditingController();
     super.initState();
   }
@@ -131,6 +138,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
   Widget build(BuildContext context) {
     return MultiBlocListener(
       listeners: [
+        // Listener UserBloc: Mengambil data user yang berhasil diload
         BlocListener<UserBloc, UserState>(
           listener: (context, state) {
             if (state is UserGetSuccess) {
@@ -138,20 +146,23 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
             }
           },
         ),
+        // Listener ReservationBloc: Menangani hasil submit (Sukses/Gagal)
         BlocListener<ReservationBloc, ReservationState>(
           listener: (context, state) {
             if (state is ReservationCreateSuccess) {
+              // Jika sukses: Tampilkan popup sukses dan reset state ketersediaan gedung.
               PopUp().whenSuccessDoSomething(
                 context,
                 "Mohon untuk menunggu konfirmasi dari admin",
                 Icons.check_circle,
-                true,
+                true, // true = tutup halaman confirm setelah sukses
               );
+              // Trigger refresh data ketersediaan gedung agar update status terbaru
               BlocProvider.of<ReservationBuildingBloc>(context).add(
                 InitialBuildingAvail(),
               );
             } else if (state is ReservationCreateFailed) {
-              // [OPSIONAL] Tambahkan ini agar user tau jika gagal
+              // Feedback jika gagal (misal koneksi error)
               ScaffoldMessenger.of(context).showSnackBar(
                 const SnackBar(content: Text("Gagal membuat reservasi")),
               );
@@ -160,7 +171,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
         ),
       ],
       child: Scaffold(
-        resizeToAvoidBottomInset: false,
+        resizeToAvoidBottomInset: false, // Mencegah layout rusak saat keyboard muncul
         body: Stack(
           children: [
             Column(
@@ -175,7 +186,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           const Gap(15),
-                          imageLoader(),
+                          imageLoader(), // Gambar Gedung
                           const Gap(15),
                           Padding(
                             padding: const EdgeInsets.symmetric(
@@ -185,6 +196,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                             child: Column(
                               crossAxisAlignment: CrossAxisAlignment.start,
                               children: [
+                                // Detail Informasi Gedung & Tanggal
                                 TitleSubtitleDetailPage(
                                   title: widget.building.name!,
                                   subtitle: widget.building.description!,
@@ -214,7 +226,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                                 ),
 
                                 // ==========================================
-                                // [BARU] UI Upload Bukti (MULAI DARI SINI)
+                                // Fitur Upload Bukti Pengajuan (Dokumen/Surat)
                                 // ==========================================
                                 const Gap(15),
                                 const Padding(
@@ -223,13 +235,13 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                                     "Bukti Pengajuan (Opsional)",
                                     style: TextStyle(
                                       fontWeight: FontWeight.bold,
-                                      fontSize: 14, // Sesuaikan ukuran font
+                                      fontSize: 14,
                                     ),
                                   ),
                                 ),
                                 const Gap(8),
                                 GestureDetector(
-                                  onTap: _pickProofImage,
+                                  onTap: _pickProofImage, // Trigger pilih gambar
                                   child: Container(
                                     height: 180,
                                     width: double.infinity,
@@ -239,6 +251,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                                       border: Border.all(
                                           color: Colors.grey.shade400),
                                     ),
+                                    // Logic Preview: Tampilkan gambar jika ada, atau ikon 'Add' jika belum.
                                     child: _imageProof != null
                                         ? ClipRRect(
                                       borderRadius:
@@ -266,20 +279,22 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                                 ),
                                 const Gap(15),
                                 // ==========================================
-                                // [BARU] UI Upload Bukti (SELESAI DI SINI)
-                                // ==========================================
 
+                                // Field Input Keterangan Tambahan
                                 CustomTextFormField(
                                   fieldName: "Keterangan",
                                   controller: informationController,
                                   prefixIcon: Icons.description,
                                 ),
                                 const Gap(30),
+
+                                // Tombol Submit
                                 Align(
                                   alignment: Alignment.bottomRight,
                                   child: ButtonPositive(
                                     name: "Reservasi Sekarang",
                                     function: () {
+                                      // Konfirmasi ulang sebelum kirim data
                                       PopUp().whenDoSomething(
                                         context,
                                         "Ingin melakukan reservasi?",
@@ -300,6 +315,7 @@ class _ConfirmReservationPageState extends State<ConfirmReservationPage> {
                 )
               ],
             ),
+            // Indikator Loading saat proses upload/submit
             Center(
               child: BlocBuilder<ReservationBloc, ReservationState>(
                 builder: (context, state) {
